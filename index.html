@@ -103,6 +103,16 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .card.dragging{opacity:.82;cursor:grabbing}
 .card.dragging .cbg{filter:drop-shadow(0 8px 14px rgba(0,0,0,.18))}
 .tg{cursor:pointer}
+.av.has{cursor:zoom-in}
+.av.has:hover circle:first-child{stroke:var(--accent);stroke-width:3px}
+.ph.has{cursor:zoom-in}
+.modal.lb{max-width:min(900px,100%);padding:16px;gap:12px}
+.lb-frame{display:grid;place-items:center;background:var(--panel-2);border-radius:10px;min-height:240px;overflow:hidden}
+.lb-frame img{display:block;max-width:100%;max-height:72vh;width:auto;height:auto;object-fit:contain;border:0;border-radius:0;background:none}
+.lb-cap{display:flex;flex-direction:column;gap:2px;padding-inline:4px}
+.lb-cap b{font-family:var(--f-display);font-size:18px}
+.lb-cap span{color:var(--muted)}
+.lb-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
 .tg:hover rect{stroke:var(--accent)!important}
 
 .float{position:absolute;display:flex;gap:4px;background:var(--panel);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);padding:4px;z-index:15;transform:translateX(-50%)}
@@ -436,9 +446,10 @@ function cardMarkup(n,C,F,photoSrc){
   s+=`<rect class="cbg" width="${W}" height="${H}" rx="10" style="fill:${C.card};stroke:${C.edge};stroke-width:1px${n.kind==='assistant'?';stroke-dasharray:5 4':''}"/>`;
   s+=`<rect width="6" height="${H}" clip-path="url(#cclip)" style="fill:${col}"/>`;
   const src=photoSrc!==undefined?photoSrc:photoURL(n.photo);
-  s+=`<circle cx="46" cy="${cy}" r="31" style="fill:${col}"/>`;
+  s+=`<g class="av${src?' has':''}" data-av="1"><circle cx="46" cy="${cy}" r="31" style="fill:${col}"/>`;
   if(src){s+=`<circle cx="46" cy="${cy}" r="29" style="fill:${C.card}"/><image href="${esc(src)}" xlink:href="${esc(src)}" x="17" y="${cy-29}" width="58" height="58" preserveAspectRatio="xMidYMid slice" clip-path="url(#avclip)"/>`}
   else s+=`<text x="46" y="${cy+7}" text-anchor="middle" style="font:${F.ini};fill:#ffffff">${esc(initials(n.name))}</text>`;
+  s+='</g>';
   const tx=88,mw=W-tx-12;
   const name=ellip(n.name||'Sem nome',F.name,mw);
   const tl=wrap(n.title,F.title,mw,2);
@@ -848,6 +859,7 @@ function fillPanel(force){
   for(const el of pinner.querySelectorAll('[data-k]')){if(force||document.activeElement!==el)el.value=n[el.dataset.k]||''}
   const mg=$('#f-mgr');if(mg&&(force||document.activeElement!==mg))mg.value=n.parentId&&nodes.has(n.parentId)?n.parentId:'';
   const ph=$('#ph');if(ph){const c=nodeColor(n);ph.style.setProperty('--c',c);
+    ph.classList.toggle('has',!!n.photo);ph.setAttribute('aria-label',n.photo?'Ampliar foto':'Enviar foto');ph.title=n.photo?'Clique para ampliar':'Clique para enviar uma foto';
     const pu=photoURL(n.photo);if(pu){ph.style.backgroundImage=`url("${pu.replace(/"/g,'%22')}")`;ph.textContent='';ph.style.backgroundColor='var(--panel-2)'}
     else{ph.style.backgroundImage='';ph.textContent=initials(n.name);ph.style.backgroundColor=c}}
   pinner.querySelectorAll('[data-kind]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.kind===n.kind)));
@@ -886,7 +898,7 @@ pinner.addEventListener('change',e=>{const el=e.target;if(el.dataset.k){pushHist
 pinner.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input'))e.target.blur()});
 pinner.addEventListener('click',e=>{
   const b=e.target.closest('button');const n=sel&&nodes.get(sel);
-  if(!b){if(e.target.closest('#ph')&&n)pickPhoto(n.id);return}
+  if(!b){if(e.target.closest('#ph')&&n){n.photo?openPhoto(n.id):pickPhoto(n.id)}return}
   if(b.dataset.a==='close'){panel.classList.remove('open');return}
   if(!n)return;
   if(b.dataset.kind){if(b.dataset.kind!==n.kind){n.kind=b.dataset.kind;commit()}return}
@@ -902,7 +914,7 @@ pinner.addEventListener('click',e=>{
     case 'delteam':if(b.classList.contains('armed'))removePerson(n.id,true);else{b.classList.add('armed');b.textContent=`Confirmar exclusão de ${b.dataset.n} pessoas`;setTimeout(()=>{if(b.isConnected){b.classList.remove('armed');b.textContent=`Excluir junto com a equipe (${b.dataset.n} pessoas)`}},4000)}break;
   }
 });
-pinner.addEventListener('keydown',e=>{if(e.target.id==='ph'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();sel&&pickPhoto(sel)}});
+pinner.addEventListener('keydown',e=>{if(e.target.id==='ph'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();const n=sel&&nodes.get(sel);if(n)n.photo?openPhoto(n.id):pickPhoto(n.id)}});
 pinner.addEventListener('dragover',e=>{const ph=e.target.closest('#ph');if(ph){e.preventDefault();ph.classList.add('drag')}});
 pinner.addEventListener('dragleave',e=>{const ph=e.target.closest('#ph');if(ph)ph.classList.remove('drag')});
 pinner.addEventListener('drop',e=>{const ph=e.target.closest('#ph');if(ph&&sel){e.preventDefault();ph.classList.remove('drag');setPhoto(sel,e.dataTransfer.files[0])}});
@@ -920,7 +932,7 @@ svg.addEventListener('pointerdown',e=>{
   const tg=e.target.closest('[data-toggle]');
   if(tg){act={type:'toggle',id:tg.dataset.toggle,sx:e.clientX,sy:e.clientY,moved:false};return}
   const c=e.target.closest('[data-id]');
-  act=c?{type:'card',id:c.dataset.id,sx:e.clientX,sy:e.clientY,moved:false,drop:null}:{type:'pan',sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y,moved:false};
+  act=c?{type:'card',id:c.dataset.id,av:!!e.target.closest('[data-av]'),sx:e.clientX,sy:e.clientY,moved:false,drop:null}:{type:'pan',sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y,moved:false};
 });
 svg.addEventListener('pointermove',e=>{
   if(!pts.has(e.pointerId)||!act)return;
@@ -945,6 +957,7 @@ function endPointer(e){
   const a=act;act=null;svg.classList.remove('panning');
   if(a.type==='toggle'&&!a.moved){toggleCollapse(a.id);return}
   if(a.type==='card'){
+    if(!a.moved&&a.av&&nodes.get(a.id)?.photo){select(a.id);openPhoto(a.id);return}
     if(!a.moved){const now=Date.now();if(lastTap.id===a.id&&now-lastTap.t<380){select(a.id);focusName()}else select(a.id);lastTap={id:a.id,t:now};return}
     if(a.drop){const n=nodes.get(a.id),t=nodes.get(a.drop);if(reparent(a.id,a.drop)){sel=a.id;render();buildPanel();toast(`${n.name} agora reporta a ${t.name}.`,'Desfazer',undo)}else render()}
     else render();
@@ -1008,8 +1021,22 @@ $('#startBtn').onclick=startChart;$('#startCsv').onclick=openCsv;
 function startChart(){const id=newPerson('',{name:'Nome do diretor',title:'Diretor(a) geral',dept:'Diretoria'});sel=id;commit();fit();buildPanel(true);focusName()}
 
 /* ---------------- modal e aviso ---------------- */
-function modal(html){$('#modalRoot').innerHTML=`<div class="modal-bg"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+function modal(html,cls){$('#modalRoot').innerHTML=`<div class="modal-bg"><div class="modal${cls?' '+cls:''}" role="dialog" aria-modal="true">${html}</div></div>`;
   const bg=$('#modalRoot .modal-bg');bg.addEventListener('click',e=>{if(e.target===bg)closeModal()});setTimeout(()=>bg.querySelector('textarea,button.primary,button')?.focus(),20);return bg}
+async function openPhoto(id){
+  const n=nodes.get(id);if(!n||!n.photo)return;
+  let url=photoURL(n.photo);
+  const sub=[n.title,n.dept].filter(Boolean).join(' · ');
+  const bg=modal(`<div class="lb-frame" id="lbFrame">${url?'':'<div class="loading"><span class="spin"></span>Carregando foto…</div>'}</div>
+    <div class="lb-foot"><div class="lb-cap"><b>${esc(n.name||'Sem nome')}</b>${sub?`<span>${esc(sub)}</span>`:''}</div>
+    <div class="actions"><button class="btn" data-ch>Trocar foto</button><button class="btn primary" data-x>Fechar</button></div></div>`,'lb');
+  bg.querySelector('[data-x]').onclick=closeModal;
+  bg.querySelector('[data-ch]').onclick=()=>{closeModal();pickPhoto(id)};
+  const show=u=>{const fr=bg.querySelector('#lbFrame');if(!fr)return;const img=new Image();img.alt='Foto de '+(n.name||'colaborador');img.src=u;fr.innerHTML='';fr.appendChild(img)};
+  if(url){show(url);return}
+  if(n.photo.startsWith('fs:')){try{url=await loadFsPhoto(n.photo.slice(3));if(url)show(url);else throw 0}
+    catch(e){const fr=bg.querySelector('#lbFrame');if(fr)fr.innerHTML='<p class="note">Não consegui carregar esta foto.</p>'}}
+}
 function closeModal(){$('#modalRoot').innerHTML=''}
 let toastT=null;
 function toast(msg,actLabel,fn){clearTimeout(toastT);const r=$('#toastRoot');r.innerHTML=`<div class="toast" role="status"><span>${esc(msg)}</span>${actLabel?`<button>${esc(actLabel)}</button>`:''}</div>`;

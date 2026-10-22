@@ -77,6 +77,14 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .status i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .status.ok i{background:var(--ok)} .status.busy i{background:#d29a1e} .status.err i{background:var(--danger)}
 .menu-wrap{position:relative}
+.tabs{flex:1 1 100%;order:10;display:flex;align-items:flex-end;gap:2px;overflow-x:auto;margin-bottom:-10px;padding-top:2px;scrollbar-width:thin}
+.tab{display:inline-flex;align-items:center;gap:6px;max-width:240px;border:1px solid transparent;border-bottom:0;background:none;border-radius:8px 8px 0 0;padding:8px 14px 9px;cursor:pointer;color:var(--muted);white-space:nowrap;flex:none;position:relative}
+.tab span{overflow:hidden;text-overflow:ellipsis}
+.tab:hover{background:var(--panel-2);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--paper);border-color:var(--rule);color:var(--ink);font-weight:600}
+.tab[aria-selected="true"]::after{content:"";position:absolute;left:10px;right:10px;top:-1px;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
+.tab.add{color:var(--accent);font-weight:600}
+.tab.add svg{width:16px;height:16px}
 .menu{position:absolute;right:0;top:calc(100% + 6px);min-width:250px;background:var(--panel);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);padding:6px;z-index:40;display:flex;flex-direction:column}
 .menu button{display:flex;align-items:center;gap:10px;border:0;background:none;text-align:left;padding:9px 10px;border-radius:6px;cursor:pointer}
 .menu button:hover,.menu button:focus-visible{background:var(--accent-soft)}
@@ -206,6 +214,12 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--panel-2);border:1
     <div class="menu-wrap">
       <button class="btn" id="fileBtn" aria-haspopup="true" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></svg><span class="lbl">Arquivo</span></button>
       <div class="menu" id="fileMenu" hidden role="menu">
+        <div id="chartActs" hidden style="display:contents">
+        <button role="menuitem" data-act="new"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo organograma</button>
+        <button role="menuitem" data-act="dup"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>Duplicar este organograma</button>
+        <button role="menuitem" class="del" data-act="delchart"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Excluir este organograma</button>
+        <hr>
+        </div>
         <button role="menuitem" data-act="png"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/></svg>Exportar imagem (PNG)</button>
         <button role="menuitem" data-act="json-out"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>Exportar backup (JSON)</button>
         <hr>
@@ -218,6 +232,7 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--panel-2);border:1
     </div>
     <span class="status" id="status" title=""><i></i><span>Conectando…</span></span>
   </div>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Organogramas" hidden></nav>
 </header>
 
 <main class="main">
@@ -486,7 +501,7 @@ function pushHist(){const s=snapshot();if(hist[hi]===s)return;hist=hist.slice(0,
 function commit(){pushHist();render();scheduleSave()}
 function touch(){render();scheduleSave()}
 function updateUndo(){$('#undo').disabled=hi<=0;$('#redo').disabled=hi>=hist.length-1}
-function restore(s){loadState(s);if(sel&&!nodes.has(sel))sel=null;syncTitle();render();buildPanel();scheduleSave()}
+function restore(s){loadState(s);if(sel&&!nodes.has(sel))sel=null;syncTitle();render();buildPanel();scheduleSave();if(mode==='db'&&chartId)renderTabs()}
 function undo(){if(hi>0){hi--;restore(hist[hi])}}
 function redo(){if(hi<hist.length-1){hi++;restore(hist[hi])}}
 
@@ -496,15 +511,15 @@ function setStatus(kind,text,tip){const s=$('#status');s.className='status '+(ki
 async function save(){
   if(mode==='local'){try{localStorage.setItem(LS_KEY,snapshot());setStatus('ok','Salvo neste navegador','Os dados ficam só neste navegador. Use Arquivo › Exportar backup para guardar uma cópia.')}catch(e){setStatus('err','Não foi possível salvar','O navegador bloqueou o armazenamento. Exporte um backup em Arquivo.')}return}
   if(mode!=='db')return;
-  if(saving){again=true;return}
+  if(saving){again=true;return savePromise}
   saving=true;
-  try{
+  return savePromise=(async()=>{try{
     do{
       again=false;const ops=[];
       for(const [id,n] of nodes){const js=ser(n);if(synced.get(id)!==js)ops.push({id,js,data:norm(n)})}
       for(const id of [...synced.keys()])if(!nodes.has(id))ops.push({id,del:true});
       const mjs=JSON.stringify(meta);
-      if(mjs!==metaSynced){const prev=metaSynced;metaSynced=mjs;try{await metaRef.set(JSON.parse(mjs))}catch(e){metaSynced=prev;throw e}}
+      if(mjs!==metaSynced){const prev=metaSynced;metaSynced=mjs;try{await (fsPhotos?metaRef.set(JSON.parse(mjs),{merge:true}):metaRef.set(JSON.parse(mjs)))}catch(e){metaSynced=prev;throw e}}
       let i=0,err=null;
       const worker=async()=>{while(i<ops.length&&!err){const op=ops[i++];const prev=synced.get(op.id);
         try{if(op.del){synced.delete(op.id);await col.doc(op.id).delete()}else{synced.set(op.id,op.js);await col.doc(op.id).set(op.data)}}
@@ -519,8 +534,9 @@ async function save(){
     else if(code==='quota_exceeded'){setStatus('err','Espaço esgotado','O armazenamento desta página está cheio. Remova fotos ou pessoas.')}
     else if(failCount<4){failCount++;setStatus('busy','Tentando salvar…');setTimeout(save,1500*failCount)}
     else setStatus('err','Não foi possível salvar',(e&&e.message)||'');
-  }finally{saving=false}
+  }finally{saving=false}})();
 }
+let savePromise=null;
 function onPeople(snap){
   let changed=false;
   for(const ch of snap.docChanges()){
@@ -544,7 +560,7 @@ function onMeta(s){
   const d=normMeta(s.data()),js=JSON.stringify(d);
   if(js===metaSynced)return;
   if(JSON.stringify(meta)!==metaSynced)return;
-  meta=d;metaSynced=js;syncTitle();if(ready)render();
+  meta=d;metaSynced=js;syncTitle();if(ready)render();if(mode==='db'&&chartId)renderTabs();
 }
 function startLocal(){
   mode='local';
@@ -569,13 +585,103 @@ function initFirebase(){
   if(!window.firebase){startLocal();setStatus('err','Firebase não carregou','Sem internet ou bloqueio de rede. Os dados estão sendo salvos só neste navegador.');return}
   try{
     const app=firebase.apps.length?firebase.app():firebase.initializeApp(FIREBASE_CONFIG);
-    db=app.firestore();fsPhotos=true;$('#cleanBtn').hidden=false;
-    col=db.collection('people');metaRef=db.doc('meta/chart');mode='db';
-    metaRef.onSnapshot(s=>onMeta({exists:s.exists,data:()=>s.data()}),()=>{});
-    col.onSnapshot(onPeople,e=>{
-      if(!ready){startLocal();setStatus('err','Sem acesso ao Firebase',(e&&e.message)||'Confira as regras do Firestore.');toast('Não consegui ler o Firebase. Confira as regras de segurança do Firestore.');return}
-      setStatus('err','Sem conexão',e&&e.message)});
+    db=app.firestore();fsPhotos=true;mode='db';
+    $('#cleanBtn').hidden=false;$('#chartActs').hidden=false;$('#tabs').hidden=false;
+    let migrating=false;
+    db.collection('charts').onSnapshot(async snap=>{
+      charts=snap.docs.map(d=>{const x=d.data()||{};return{id:d.id,title:String(x.title||'Organograma'),order:Number(x.order)||0,createdAt:Number(x.createdAt)||0}})
+        .sort((a,b)=>a.order-b.order||a.createdAt-b.createdAt);
+      if(!charts.length){
+        if(migrating)return;migrating=true;
+        try{await migrateLegacy()}catch(e){failInit(e)}
+        return;
+      }
+      renderTabs();
+      if(!chartId||!charts.some(c=>c.id===chartId)){
+        let want=decodeURIComponent(location.hash.slice(1));
+        if(!charts.some(c=>c.id===want)){try{want=localStorage.getItem(LS_KEY+'-ultimo')}catch(e){want=''}}
+        openChart(charts.some(c=>c.id===want)?want:charts[0].id);
+      }
+    },failInit);
   }catch(e){startLocal();setStatus('err','Erro no Firebase',e&&e.message)}
+}
+function failInit(e){
+  if(!ready&&mode==='db'){$('#tabs').hidden=true;$('#chartActs').hidden=true;$('#cleanBtn').hidden=true;fsPhotos=false;startLocal();setStatus('err','Sem acesso ao Firebase',(e&&e.message)||'Confira as regras do Firestore.');toast('Não consegui ler o Firebase. Confira as regras de segurança do Firestore.');return}
+  setStatus('err','Sem conexão',e&&e.message);
+}
+/* Primeiro acesso com abas: o organograma antigo (coleções people e meta) vira a aba "principal". */
+async function migrateLegacy(){
+  const cid='principal';
+  const [legacy,m]=await Promise.all([db.collection('people').get(),db.doc('meta/chart').get()]);
+  const md=m.exists?normMeta(m.data()):{title:'Organograma',compact:true};
+  const docs=legacy.docs;
+  for(let i=0;i<docs.length;i+=400){
+    const b=db.batch();
+    docs.slice(i,i+400).forEach(d=>b.set(db.collection('charts').doc(cid).collection('people').doc(d.id),norm(d.data())));
+    await b.commit();
+  }
+  await db.collection('charts').doc(cid).set({...md,order:0,createdAt:Date.now()},{merge:true});
+}
+let charts=[],chartId=null,unsubPeople=null,unsubMeta=null;
+async function openChart(cid){
+  if(!cid||cid===chartId)return;
+  if(chartId){clearTimeout(saveTimer);try{await save()}catch(e){}}
+  if(unsubPeople)unsubPeople();if(unsubMeta)unsubMeta();
+  chartId=cid;
+  try{localStorage.setItem(LS_KEY+'-ultimo',cid)}catch(e){}
+  try{history.replaceState(null,'','#'+encodeURIComponent(cid))}catch(e){}
+  nodes=new Map();synced=new Map();sel=null;ready=false;hist=[];hi=-1;
+  const c=charts.find(x=>x.id===cid);
+  meta={title:c?c.title:'Organograma',compact:true};metaSynced=JSON.stringify(meta);
+  syncTitle();renderTabs();render();buildPanel();
+  const ref=db.collection('charts').doc(cid);
+  metaRef=ref;col=ref.collection('people');
+  unsubMeta=ref.onSnapshot(s=>{if(chartId===cid)onMeta({exists:s.exists,data:()=>s.data()})},()=>{});
+  unsubPeople=col.onSnapshot(snap=>{if(chartId===cid)onPeople(snap)},failInit);
+}
+function renderTabs(){
+  const t=$('#tabs');if(t.hidden)return;
+  t.innerHTML=charts.map(c=>{const title=c.id===chartId?(meta.title||c.title):c.title;
+    return `<button class="tab" role="tab" data-chart="${esc(c.id)}" aria-selected="${c.id===chartId}" title="${esc(title)}"><span>${esc(title)}</span></button>`}).join('')
+    +`<button class="tab add" data-newchart title="Criar outro organograma"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo</button>`;
+  t.querySelector('[aria-selected="true"]')?.scrollIntoView({block:'nearest',inline:'nearest'});
+}
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-newchart'))newChart();else if(b.dataset.chart)openChart(b.dataset.chart)});
+window.addEventListener('hashchange',()=>{const id=decodeURIComponent(location.hash.slice(1));if(charts.some(c=>c.id===id))openChart(id)});
+async function newChart(data){
+  if(mode!=='db'){toast('Vários organogramas só funcionam com o Firebase conectado.');return}
+  const cid=uid(),order=charts.reduce((m,c)=>Math.max(m,c.order),0)+1,title=data?data.title:'Novo organograma';
+  try{
+    if(data&&data.people.length){for(let i=0;i<data.people.length;i+=400){const b=db.batch();data.people.slice(i,i+400).forEach(p=>b.set(db.collection('charts').doc(cid).collection('people').doc(p.id),norm(p)));await b.commit()}}
+    await db.collection('charts').doc(cid).set({title,compact:data?data.compact:true,order,createdAt:Date.now()});
+    if(!charts.some(c=>c.id===cid))charts.push({id:cid,title,order,createdAt:Date.now()});
+    await openChart(cid);
+    if(!data)setTimeout(()=>{const t=$('#chartTitle');t.focus();t.select()},60);
+    else toast('Cópia criada.');
+  }catch(e){toast('Não consegui criar o organograma. Confira as regras do Firestore.')}
+}
+function duplicateChart(){
+  newChart({title:(meta.title||'Organograma')+' (cópia)',compact:meta.compact,people:[...nodes.values()].map(n=>({id:n.id,...norm(n)}))});
+}
+function confirmDeleteChart(){
+  if(mode!=='db')return;
+  if(charts.length<=1){toast('Este é o único organograma. Para esvaziá-lo, use Arquivo › Apagar organograma.');return}
+  const bg=modal(`<h3>Excluir “${esc(meta.title)}”?</h3><p>A aba e as ${nodes.size} pessoas deste organograma serão apagadas para todos. Os outros organogramas não são afetados. Essa ação não pode ser desfeita.</p><div class="actions"><button class="btn" data-x>Cancelar</button><button class="btn danger armed" data-ok>Excluir organograma</button></div>`);
+  bg.querySelector('[data-x]').onclick=closeModal;
+  bg.querySelector('[data-ok]').onclick=async()=>{
+    closeModal();const cid=chartId,ref=db.collection('charts').doc(cid);
+    const next=charts.find(c=>c.id!==cid);
+    try{
+      clearTimeout(saveTimer);
+      if(unsubPeople)unsubPeople();if(unsubMeta)unsubMeta();unsubPeople=unsubMeta=null;
+      nodes=new Map();synced=new Map();
+      const ps=await ref.collection('people').get();
+      for(let i=0;i<ps.docs.length;i+=400){const b=db.batch();ps.docs.slice(i,i+400).forEach(d=>b.delete(d.ref));await b.commit()}
+      await ref.delete();
+      charts=charts.filter(c=>c.id!==cid);chartId=null;
+      await openChart(next.id);toast('Organograma excluído.');
+    }catch(e){toast('Não consegui excluir. Confira as regras do Firestore.')}
+  };
 }
 
 /* ---------------- ações ---------------- */
@@ -657,6 +763,10 @@ async function cleanPhotos(){
   const used=new Set();
   const addFrom=arr=>arr.forEach(n=>{if(n.photo&&n.photo.startsWith('fs:'))used.add(n.photo.slice(3))});
   addFrom([...nodes.values()]);for(const h of hist){try{addFrom(JSON.parse(h).people||[])}catch(e){}}
+  try{
+    const lists=await Promise.all([db.collection('people').get(),...charts.filter(c=>c.id!==chartId).map(c=>db.collection('charts').doc(c.id).collection('people').get())]);
+    for(const l of lists)addFrom(l.docs.map(d=>d.data()||{}));
+  }catch(e){toast('Não consegui conferir as fotos dos outros organogramas.');return}
   let snap;try{snap=await db.collection('fotos').get()}catch(e){toast('Não consegui listar as fotos.');return}
   const orphan=snap.docs.filter(d=>!used.has(d.id));
   const mb=orphan.reduce((a,d)=>a+((d.data()||{}).size||0),0)/1048576;
@@ -876,7 +986,7 @@ document.addEventListener('keydown',e=>{
 
 /* ---------------- título, compacto, busca ---------------- */
 function syncTitle(){const t=$('#chartTitle');if(document.activeElement!==t)t.value=meta.title;$('#compact').setAttribute('aria-pressed',String(meta.compact))}
-$('#chartTitle').addEventListener('input',e=>{meta.title=e.target.value||'Organograma';scheduleSave()});
+$('#chartTitle').addEventListener('input',e=>{meta.title=e.target.value||'Organograma';scheduleSave();if(mode==='db')renderTabs()});
 $('#chartTitle').addEventListener('change',()=>{pushHist();updateUndo()});
 $('#chartTitle').addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur()});
 $('#compact').onclick=()=>{meta.compact=!meta.compact;syncTitle();commit()};
@@ -893,7 +1003,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('.search'))res.hidden
 function closeMenus(){$('#fileMenu').hidden=true;$('#fileBtn').setAttribute('aria-expanded','false')}
 $('#fileBtn').onclick=()=>{const m=$('#fileMenu');m.hidden=!m.hidden;$('#fileBtn').setAttribute('aria-expanded',String(!m.hidden));if(!m.hidden)m.querySelector('button').focus()};
 $('#fileMenu').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;closeMenus();
-  ({png:exportPNG,'json-out':exportJSON,csv:openCsv,'json-in':()=>$('#jsonFile').click(),clear:confirmClear,clean:cleanPhotos})[b.dataset.act]()});
+  ({png:exportPNG,'json-out':exportJSON,csv:openCsv,'json-in':()=>$('#jsonFile').click(),clear:confirmClear,clean:cleanPhotos,new:()=>newChart(),dup:duplicateChart,delchart:confirmDeleteChart})[b.dataset.act]()});
 $('#startBtn').onclick=startChart;$('#startCsv').onclick=openCsv;
 function startChart(){const id=newPerson('',{name:'Nome do diretor',title:'Diretor(a) geral',dept:'Diretoria'});sel=id;commit();fit();buildPanel(true);focusName()}
 

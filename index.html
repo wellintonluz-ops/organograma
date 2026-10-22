@@ -212,6 +212,7 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--panel-2);border:1
         <button role="menuitem" data-act="csv"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></svg>Importar planilha (Excel/CSV)</button>
         <button role="menuitem" data-act="json-in"><svg class="i" viewBox="0 0 24 24"><path d="M12 20V8M7 13l5-5 5 5M5 4h14"/></svg>Importar backup (JSON)</button>
         <hr>
+        <button role="menuitem" data-act="clean" id="cleanBtn" hidden><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8M15 4l6 6"/></svg>Limpar fotos sem uso</button>
         <button role="menuitem" class="del" data-act="clear"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Apagar organograma</button>
       </div>
     </div>
@@ -264,6 +265,19 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--panel-2);border:1
 <div id="modalRoot"></div>
 <div id="toastRoot"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyCoHzsX-onnFC-E2Noj76njWHAJsTfxxPA",
+  authDomain:"organograma-776cf.firebaseapp.com",
+  projectId:"organograma-776cf",
+  storageBucket:"organograma-776cf.firebasestorage.app",
+  messagingSenderId:"1000597195237",
+  appId:"1:1000597195237:web:4e04cec38ae6eb7861470c",
+  measurementId:"G-H7DGN9JWWM"
+};
+</script>
 <script>
 (()=>{
 'use strict';
@@ -298,7 +312,7 @@ function wrap(text,font,max,maxLines){
 }
 function hash(s){let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
 const okColor=c=>/^#[0-9a-f]{6}$/i.test(c||'');
-const okPhoto=p=>typeof p==='string'&&(p.startsWith('data:image/')||p.startsWith('/')||p.startsWith('https://'));
+const okPhoto=p=>typeof p==='string'&&(p.startsWith('data:image/')||p.startsWith('/')||p.startsWith('https://')||/^fs:[\w-]{1,60}$/.test(p));
 function nodeColor(n){return okColor(n.color)?n.color:(n.dept?PALETTE[hash(key(n.dept))%PALETTE.length]:'#64748b')}
 function initials(name){const p=String(name||'').trim().split(/\s+/).filter(Boolean);if(!p.length)return '?';return ((p[0][0]||'')+(p.length>1?p[p.length-1][0]:'')).toUpperCase()}
 
@@ -308,7 +322,7 @@ let meta={title:'Organograma',compact:true};
 let sel=null, ready=false, mode='loading';
 let view={x:0,y:0,k:1};
 let byParent=new Map(), roots=[], bounds={x0:0,y0:0,x1:0,y1:0};
-let db=null,col=null,metaRef=null,assets=null,downloads=null;
+let db=null,col=null,metaRef=null,assets=null,downloads=null,fsPhotos=false;
 let synced=new Map(), metaSynced=JSON.stringify(meta);
 let hist=[],hi=-1;
 
@@ -406,7 +420,7 @@ function cardMarkup(n,C,F,photoSrc){
   if(isSel)s+=`<rect x="-5" y="-5" width="${W+10}" height="${H+10}" rx="14" style="fill:none;stroke:${C.accent};stroke-width:2.5px"/>`;
   s+=`<rect class="cbg" width="${W}" height="${H}" rx="10" style="fill:${C.card};stroke:${C.edge};stroke-width:1px${n.kind==='assistant'?';stroke-dasharray:5 4':''}"/>`;
   s+=`<rect width="6" height="${H}" clip-path="url(#cclip)" style="fill:${col}"/>`;
-  const src=photoSrc!==undefined?photoSrc:(okPhoto(n.photo)?n.photo:'');
+  const src=photoSrc!==undefined?photoSrc:photoURL(n.photo);
   s+=`<circle cx="46" cy="${cy}" r="31" style="fill:${col}"/>`;
   if(src){s+=`<circle cx="46" cy="${cy}" r="29" style="fill:${C.card}"/><image href="${esc(src)}" xlink:href="${esc(src)}" x="17" y="${cy-29}" width="58" height="58" preserveAspectRatio="xMidYMid slice" clip-path="url(#avclip)"/>`}
   else s+=`<text x="46" y="${cy+7}" text-anchor="middle" style="font:${F.ini};fill:#ffffff">${esc(initials(n.name))}</text>`;
@@ -501,7 +515,7 @@ async function save(){
     failCount=0;setStatus('ok','Salvo','Alterações salvas e visíveis para quem tem acesso a esta página.');
   }catch(e){
     const code=e&&e.code;
-    if(code==='not_granted'||code==='revoked'){setStatus('err','Somente leitura','Você pode ver o organograma, mas não tem permissão para salvar alterações.')}
+    if(code==='not_granted'||code==='revoked'||code==='permission-denied'){setStatus('err','Somente leitura','Você pode ver o organograma, mas não tem permissão para salvar alterações.')}
     else if(code==='quota_exceeded'){setStatus('err','Espaço esgotado','O armazenamento desta página está cheio. Remova fotos ou pessoas.')}
     else if(failCount<4){failCount++;setStatus('busy','Tentando salvar…');setTimeout(save,1500*failCount)}
     else setStatus('err','Não foi possível salvar',(e&&e.message)||'');
@@ -541,7 +555,7 @@ function startLocal(){
 async function init(){
   syncTitle();buildPanel();updateOverlay();
   const c=window.claude;
-  if(!c||typeof c.use!=='function'){startLocal();return}
+  if(!c||typeof c.use!=='function'){initFirebase();return}
   c.use('assets').then(a=>{assets=a}).catch(()=>{});
   c.use('downloads').then(d=>{downloads=d}).catch(()=>{});
   let d=null;try{d=await c.use('db')}catch(e){}
@@ -549,6 +563,19 @@ async function init(){
   db=d;col=db.collection('people');metaRef=db.doc('meta/chart');mode='db';
   metaRef.onSnapshot(onMeta,()=>{});
   col.onSnapshot(onPeople,e=>{if(!ready){startLocal();return}setStatus('err','Sem conexão',e&&e.message)});
+}
+
+function initFirebase(){
+  if(!window.firebase){startLocal();setStatus('err','Firebase não carregou','Sem internet ou bloqueio de rede. Os dados estão sendo salvos só neste navegador.');return}
+  try{
+    const app=firebase.apps.length?firebase.app():firebase.initializeApp(FIREBASE_CONFIG);
+    db=app.firestore();fsPhotos=true;$('#cleanBtn').hidden=false;
+    col=db.collection('people');metaRef=db.doc('meta/chart');mode='db';
+    metaRef.onSnapshot(s=>onMeta({exists:s.exists,data:()=>s.data()}),()=>{});
+    col.onSnapshot(onPeople,e=>{
+      if(!ready){startLocal();setStatus('err','Sem acesso ao Firebase',(e&&e.message)||'Confira as regras do Firestore.');toast('Não consegui ler o Firebase. Confira as regras de segurança do Firestore.');return}
+      setStatus('err','Sem conexão',e&&e.message)});
+  }catch(e){startLocal();setStatus('err','Erro no Firebase',e&&e.message)}
 }
 
 /* ---------------- ações ---------------- */
@@ -576,6 +603,72 @@ function select(id){sel=id;render();buildPanel(true);
 function reveal(id){let n=nodes.get(id),g=0;while(n&&n.parentId&&g++<5000){const p=nodes.get(n.parentId);if(p&&p.collapsed){p.collapsed=false}n=p}touch();sel=id;render();buildPanel(true);centerOn(id)}
 
 /* ---------------- fotos ---------------- */
+/* No Firebase gratuito (sem Storage), cada foto é guardada inteira, sem redução, no Firestore:
+   fotos/{id} guarda tipo e tamanho; fotos/{id}/partes/{0000..} guarda o arquivo em pedaços de ~900 KB. */
+const CHUNK=900000;
+const photoCache=new Map(),photoProm=new Map();
+let rqRender=0;
+function scheduleRender(){if(rqRender)return;rqRender=requestAnimationFrame(()=>{rqRender=0;if(ready)render()})}
+function photoURL(p){
+  if(!okPhoto(p))return '';
+  if(!p.startsWith('fs:'))return p;
+  const pid=p.slice(3);
+  if(photoCache.has(pid))return photoCache.get(pid);
+  loadFsPhoto(pid).catch(()=>{});return '';
+}
+function loadFsPhoto(pid){
+  if(photoProm.has(pid))return photoProm.get(pid);
+  const pr=(async()=>{
+    if(!db||!fsPhotos)throw new Error('sem banco');
+    const ref=db.collection('fotos').doc(pid);
+    const m=await ref.get();if(!m.exists)throw new Error('foto não encontrada');
+    const md=m.data()||{};
+    const parts=await ref.collection('partes').get();
+    const b64=parts.docs.slice().sort((a,b)=>a.id.localeCompare(b.id)).map(d=>(d.data()||{}).d||'').join('');
+    const bin=atob(b64);const u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([u8],{type:md.type||'image/jpeg'}));
+    photoCache.set(pid,url);return url;
+  })();
+  photoProm.set(pid,pr);
+  pr.then(scheduleRender,()=>{photoCache.set(pid,'')});
+  return pr;
+}
+async function uploadFsPhoto(blob,showProgress){
+  const pid=uid();
+  const b64=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]||'');fr.onerror=rej;fr.readAsDataURL(blob)});
+  const n=Math.max(1,Math.ceil(b64.length/CHUNK));
+  const ref=db.collection('fotos').doc(pid);
+  for(let i=0;i<n;i++){
+    if(showProgress)toast(`Enviando foto… ${Math.round(i/n*100)}%`);
+    await ref.collection('partes').doc(String(i).padStart(4,'0')).set({d:b64.slice(i*CHUNK,(i+1)*CHUNK)});
+  }
+  await ref.set({type:blob.type||'image/jpeg',name:String(blob.name||'').slice(0,120),size:blob.size,parts:n,createdAt:Date.now()});
+  const url=URL.createObjectURL(blob);photoCache.set(pid,url);photoProm.set(pid,Promise.resolve(url));
+  return 'fs:'+pid;
+}
+async function convertDataPhotos(){
+  const list=[...nodes.values()].filter(n=>n.photo&&n.photo.startsWith('data:'));
+  for(let i=0;i<list.length;i++){toast(`Salvando fotos do backup… ${i+1} de ${list.length}`);
+    try{const b=await (await fetch(list[i].photo)).blob();list[i].photo=await uploadFsPhoto(b,false)}catch(e){list[i].photo=''}}
+}
+async function cleanPhotos(){
+  if(!fsPhotos)return;
+  toast('Procurando fotos sem uso…');
+  const used=new Set();
+  const addFrom=arr=>arr.forEach(n=>{if(n.photo&&n.photo.startsWith('fs:'))used.add(n.photo.slice(3))});
+  addFrom([...nodes.values()]);for(const h of hist){try{addFrom(JSON.parse(h).people||[])}catch(e){}}
+  let snap;try{snap=await db.collection('fotos').get()}catch(e){toast('Não consegui listar as fotos.');return}
+  const orphan=snap.docs.filter(d=>!used.has(d.id));
+  const mb=orphan.reduce((a,d)=>a+((d.data()||{}).size||0),0)/1048576;
+  const total=snap.docs.reduce((a,d)=>a+((d.data()||{}).size||0),0)/1048576;
+  $('#toastRoot').innerHTML='';
+  if(!orphan.length){const bg=modal(`<h3>Nenhuma foto sem uso</h3><p>Todas as ${snap.size} fotos guardadas estão em algum cartão. Espaço usado: ${total.toFixed(1)} MB de 1024 MB do plano gratuito.</p><div class="actions"><button class="btn primary" data-x>Fechar</button></div>`);bg.querySelector('[data-x]').onclick=closeModal;return}
+  const bg=modal(`<h3>Apagar fotos sem uso?</h3><p>Há ${orphan.length} foto(s) trocadas ou removidas ocupando ${mb.toFixed(1)} MB. Fotos usadas no organograma não são tocadas. Espaço total usado por fotos: ${total.toFixed(1)} MB.</p><div class="actions"><button class="btn" data-x>Cancelar</button><button class="btn danger armed" data-ok>Apagar ${orphan.length} foto(s)</button></div>`);
+  bg.querySelector('[data-x]').onclick=closeModal;
+  bg.querySelector('[data-ok]').onclick=async()=>{closeModal();let done=0;
+    for(const d of orphan){try{const parts=await d.ref.collection('partes').get();for(const p of parts.docs)await p.ref.delete();await d.ref.delete();done++;toast(`Apagando fotos… ${done} de ${orphan.length}`)}catch(e){}}
+    toast(`${done} foto(s) sem uso apagadas.`)};
+}
 let photoTarget=null;
 async function fileToSquare(file,size){
   const url=URL.createObjectURL(file);
@@ -590,7 +683,11 @@ async function setPhoto(id,file){
   const n=nodes.get(id);if(!n)return;
   try{
     let src='';
-    if(assets){try{const c=await fileToSquare(file,360);const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.86));const r=await assets.upload(blob,{type:'image/jpeg'});if(okPhoto(r.url))src=r.url}catch(e){}}
+    if(fsPhotos){
+      try{src=await uploadFsPhoto(file,true);toast('Foto salva.')}
+      catch(e){toast('Não consegui salvar a foto no Firebase. '+((e&&e.code)==='permission-denied'?'Confira as regras do Firestore.':'Tente de novo.'));return}
+    }
+    else if(assets){try{const c=await fileToSquare(file,360);const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.86));const r=await assets.upload(blob,{type:'image/jpeg'});if(okPhoto(r.url))src=r.url}catch(e){}}
     if(!src){const c=await fileToSquare(file,180);src=c.toDataURL('image/jpeg',.82)}
     const m=nodes.get(id);if(!m)return;m.photo=src;commit();buildPanel(true);
   }catch(e){toast('Não consegui ler essa imagem. Tente outro arquivo.')}
@@ -641,7 +738,7 @@ function fillPanel(force){
   for(const el of pinner.querySelectorAll('[data-k]')){if(force||document.activeElement!==el)el.value=n[el.dataset.k]||''}
   const mg=$('#f-mgr');if(mg&&(force||document.activeElement!==mg))mg.value=n.parentId&&nodes.has(n.parentId)?n.parentId:'';
   const ph=$('#ph');if(ph){const c=nodeColor(n);ph.style.setProperty('--c',c);
-    if(n.photo){ph.style.backgroundImage=`url("${n.photo.replace(/"/g,'%22')}")`;ph.textContent='';ph.style.backgroundColor='var(--panel-2)'}
+    const pu=photoURL(n.photo);if(pu){ph.style.backgroundImage=`url("${pu.replace(/"/g,'%22')}")`;ph.textContent='';ph.style.backgroundColor='var(--panel-2)'}
     else{ph.style.backgroundImage='';ph.textContent=initials(n.name);ph.style.backgroundColor=c}}
   pinner.querySelectorAll('[data-kind]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.kind===n.kind)));
   pinner.querySelectorAll('[data-color]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.color||'')===(n.color||''))));
@@ -796,7 +893,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('.search'))res.hidden
 function closeMenus(){$('#fileMenu').hidden=true;$('#fileBtn').setAttribute('aria-expanded','false')}
 $('#fileBtn').onclick=()=>{const m=$('#fileMenu');m.hidden=!m.hidden;$('#fileBtn').setAttribute('aria-expanded',String(!m.hidden));if(!m.hidden)m.querySelector('button').focus()};
 $('#fileMenu').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;closeMenus();
-  ({png:exportPNG,'json-out':exportJSON,csv:openCsv,'json-in':()=>$('#jsonFile').click(),clear:confirmClear})[b.dataset.act]()});
+  ({png:exportPNG,'json-out':exportJSON,csv:openCsv,'json-in':()=>$('#jsonFile').click(),clear:confirmClear,clean:cleanPhotos})[b.dataset.act]()});
 $('#startBtn').onclick=startChart;$('#startCsv').onclick=openCsv;
 function startChart(){const id=newPerson('',{name:'Nome do diretor',title:'Diretor(a) geral',dept:'Diretoria'});sel=id;commit();fit();buildPanel(true);focusName()}
 
@@ -858,18 +955,26 @@ function openCsv(){
     sel=null;closeModal();commit();buildPanel();fit();toast(`${n} pessoas importadas.`,'Desfazer',undo)};
 }
 $('#jsonFile').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
-  try{const o=JSON.parse(await f.text());if(!Array.isArray(o.people))throw 0;loadState({meta:{title:o.title,compact:o.compact},people:o.people});sel=null;syncTitle();commit();buildPanel();fit();toast(`Backup carregado: ${nodes.size} pessoas.`,'Desfazer',undo)}
+  try{const o=JSON.parse(await f.text());if(!Array.isArray(o.people))throw 0;loadState({meta:{title:o.title,compact:o.compact},people:o.people});if(fsPhotos)await convertDataPhotos();sel=null;syncTitle();commit();buildPanel();fit();toast(`Backup carregado: ${nodes.size} pessoas.`,'Desfazer',undo)}
   catch(_){toast('Esse arquivo não é um backup deste editor.')}});
 
 /* ---------------- exportação ---------------- */
-async function toDataURL(src){if(src.startsWith('data:'))return src;
-  try{const r=await fetch(src);if(!r.ok)return '';const b=await r.blob();return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res('');fr.readAsDataURL(b)})}catch(e){return ''}}
+let exportPhotoFail=0;
+async function toDataURL(src,size){
+  try{
+    if(src.startsWith('fs:')){src=await loadFsPhoto(src.slice(3));if(!src)throw 0}
+    let b;if(src.startsWith('data:')){if(!size)return src;b=await (await fetch(src)).blob()}
+    else{const r=await fetch(src,{mode:'cors'});if(!r.ok)throw 0;b=await r.blob()}
+    if(!size)return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res('');fr.readAsDataURL(b)});
+    const c=await fileToSquare(b,size);return c.toDataURL('image/jpeg',.9);
+  }catch(e){exportPhotoFail++;return ''}}
+function saveFile(name,blob){const a=document.createElement('a');const u=URL.createObjectURL(blob);a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
 async function buildExportSVG(){
   layoutAll();const list=visibleNodes();
   const pad=48,head=78;const bw=bounds.x1-bounds.x0,bh=bounds.y1-bounds.y0;
   const w=Math.max(Math.ceil(bw+pad*2),520),h=Math.ceil(bh+pad*2+head);
   const ox=(w-bw)/2-bounds.x0,oy=pad+head-bounds.y0;
-  const photos=new Map();await Promise.all(list.filter(n=>okPhoto(n.photo)).map(async n=>photos.set(n.id,await toDataURL(n.photo))));
+  const photos=new Map();await Promise.all(list.filter(n=>okPhoto(n.photo)).map(async n=>photos.set(n.id,await toDataURL(n.photo,240))));
   const C=EXPORT_C,F=EXPORT_F;
   const date=new Date().toLocaleDateString('pt-BR');
   const body=list.map(n=>cardMarkup(n,C,F,photos.get(n.id)||'')).join('');
@@ -891,6 +996,8 @@ async function exportPNG(){
     const x=c.getContext('2d');x.scale(scale,scale);x.drawImage(img,0,0);
     const blob=await new Promise(r=>c.toBlob(r,'image/png'));
     const fname=(key(meta.title).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'organograma')+'.png';
+    const pf=exportPhotoFail;exportPhotoFail=0;
+    if(!window.claude){saveFile(fname,blob);toast(pf?'Imagem baixada, mas algumas fotos não carregaram.':'Imagem baixada.');return}
     if(downloads){try{await downloads.save({filename:fname,data:blob});toast('Imagem pronta.');return}catch(e){if(e&&e.code==='declined'){toast('Download cancelado.');return}}}
     const url=c.toDataURL('image/png');
     const bg=modal(`<h3>Imagem do organograma</h3><p>Clique com o botão direito na imagem e escolha “Salvar imagem como…”. No celular, toque e segure.</p><img alt="Organograma exportado" src="${url}"><div class="actions"><button class="btn primary" data-x>Fechar</button></div>`);
@@ -898,9 +1005,10 @@ async function exportPNG(){
   }catch(e){toast('Não consegui gerar a imagem. Tente remover fotos muito grandes.')}
 }
 async function exportJSON(){
-  const people=await Promise.all([...nodes.values()].map(async n=>{const o={id:n.id,...norm(n)};if(o.photo&&!o.photo.startsWith('data:'))o.photo=await toDataURL(o.photo);return o}));
+  const people=await Promise.all([...nodes.values()].map(async n=>{const o={id:n.id,...norm(n)};if(o.photo&&(o.photo.startsWith('/')||o.photo.startsWith('fs:')))o.photo=await toDataURL(o.photo);return o}));
   const txt=JSON.stringify({title:meta.title,compact:meta.compact,exportedAt:new Date().toISOString(),people},null,1);
   const fname=(key(meta.title).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'organograma')+'-backup.json';
+  if(!window.claude){saveFile(fname,new Blob([txt],{type:'application/json'}));toast('Backup baixado.');return}
   if(downloads){try{await downloads.save({filename:fname,data:new Blob([txt],{type:'application/json'})});toast('Backup salvo.');return}catch(e){if(e&&e.code==='declined'){toast('Download cancelado.');return}}}
   const bg=modal(`<h3>Backup do organograma</h3><p>Copie o texto e salve num arquivo <code>.json</code>. Depois use Arquivo › Importar backup para restaurar.</p><div class="field"><label for="jsonOut">Conteúdo</label><textarea id="jsonOut" readonly></textarea></div><div class="actions"><button class="btn" data-x>Fechar</button><button class="btn primary" data-copy>Copiar</button></div>`);
   const ta=bg.querySelector('#jsonOut');ta.value=txt;

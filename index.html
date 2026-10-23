@@ -13,7 +13,7 @@
   --ink:#16202a; --muted:#5a6774; --rule:#d9dfe5;
   --card:#ffffff; --card-edge:#cbd4dc; --wire:#9aa8b5;
   --accent:#0e6b70; --accent-ink:#ffffff; --accent-soft:#dcefee;
-  --danger:#b4232c; --danger-soft:#fbe7e8; --ok:#2e7d4f;
+  --danger:#b4232c; --danger-soft:#fbe7e8; --ok:#2e7d4f; --warn:#a8650f; --warn-soft:#fbf0dc;
   --shadow:0 1px 2px rgba(22,32,42,.06),0 6px 18px rgba(22,32,42,.08);
   --f-display:"Archivo","Arial Narrow",Arial,sans-serif;
   --f-body:"Public Sans","Segoe UI",Roboto,Arial,sans-serif;
@@ -24,7 +24,7 @@
   --ink:#e5ebf0; --muted:#94a2ae; --rule:#2c3741;
   --card:#1f2931; --card-edge:#34414c; --wire:#566572;
   --accent:#4fb3b5; --accent-ink:#0b1a1b; --accent-soft:#183739;
-  --danger:#f0727a; --danger-soft:#3a1d20; --ok:#6cc391;
+  --danger:#f0727a; --danger-soft:#3a1d20; --ok:#6cc391; --warn:#e3a94b; --warn-soft:#3a2c14;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 22px rgba(0,0,0,.35);
   color-scheme:dark}}
 :root[data-theme="dark"]{
@@ -32,7 +32,7 @@
   --ink:#e5ebf0; --muted:#94a2ae; --rule:#2c3741;
   --card:#1f2931; --card-edge:#34414c; --wire:#566572;
   --accent:#4fb3b5; --accent-ink:#0b1a1b; --accent-soft:#183739;
-  --danger:#f0727a; --danger-soft:#3a1d20; --ok:#6cc391;
+  --danger:#f0727a; --danger-soft:#3a1d20; --ok:#6cc391; --warn:#e3a94b; --warn-soft:#3a2c14;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 22px rgba(0,0,0,.35);
   color-scheme:dark}
 
@@ -170,7 +170,22 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .legend li{display:flex;align-items:center;gap:8px}
 .legend i{width:10px;height:10px;border-radius:50%;flex:none}
 .legend span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.legend em{font-style:normal;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.legend em{font-style:normal;font-family:var(--f-mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.legend em b{font-weight:500;color:var(--warn)}
+.stats.two{grid-template-columns:repeat(2,1fr)}
+.stat.vac b{color:var(--warn)}
+.stat.vac{background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 30%,var(--rule))}
+.fill{display:flex;flex-direction:column;gap:6px}
+.fill-bar{height:8px;border-radius:4px;background:var(--warn-soft);overflow:hidden;border:1px solid color-mix(in srgb,var(--warn) 25%,var(--rule))}
+.fill-bar i{display:block;height:100%;background:var(--ok);border-radius:4px 0 0 4px}
+.fill small{color:var(--muted);font-size:12px}
+.vac-list{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
+.vac-list button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px dashed color-mix(in srgb,var(--warn) 45%,var(--rule));background:none;border-radius:8px;padding:7px 10px;cursor:pointer}
+.vac-list button:hover{background:var(--warn-soft)}
+.vac-list i{width:8px;height:8px;border-radius:50%;flex:none}
+.vac-list span{flex:1;min-width:0;display:flex;flex-direction:column}
+.vac-list small{color:var(--muted);font-size:12px}
+.vac-note{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 30%,var(--rule));border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.45}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:7px 12px;margin:0;font-size:13px;line-height:1.4}
 .keys dt{white-space:nowrap}
 .keys dd{margin:0;color:var(--muted)}
@@ -311,8 +326,8 @@ const W=248,H=96,GX=26,GY=64,AS=18,AO=16;
 const PALETTE=['#2f6db5','#c2582b','#2e8b6a','#8a5cc2','#b8892a','#c23f6a','#3a8c9e','#64748b'];
 const SCREEN_F={name:'600 15px Archivo, Arial, sans-serif',title:'400 12.5px "Public Sans", Arial, sans-serif',dept:'600 10px "Public Sans", Arial, sans-serif',ini:'600 20px Archivo, Arial, sans-serif',pill:'500 11px "IBM Plex Mono", monospace'};
 const EXPORT_F={name:'bold 15px Arial, Helvetica, sans-serif',title:'12.5px Arial, Helvetica, sans-serif',dept:'bold 10px Arial, Helvetica, sans-serif',ini:'bold 20px Arial, Helvetica, sans-serif',pill:'11px Arial, Helvetica, sans-serif'};
-const SCREEN_C={card:'var(--card)',edge:'var(--card-edge)',ink:'var(--ink)',muted:'var(--muted)',wire:'var(--wire)',accent:'var(--accent)',paper:'var(--paper)',screen:true};
-const EXPORT_C={card:'#ffffff',edge:'#c9d2da',ink:'#16202a',muted:'#56636f',wire:'#97a5b2',accent:'#0e6b70',paper:'#f3f5f7',screen:false};
+const SCREEN_C={card:'var(--card)',edge:'var(--card-edge)',ink:'var(--ink)',muted:'var(--muted)',wire:'var(--wire)',accent:'var(--accent)',paper:'var(--paper)',vac:'var(--panel-2)',warn:'var(--warn)',screen:true};
+const EXPORT_C={card:'#ffffff',edge:'#c9d2da',ink:'#16202a',muted:'#56636f',wire:'#97a5b2',accent:'#0e6b70',paper:'#f3f5f7',vac:'#f5f7f9',warn:'#a8650f',screen:false};
 const LS_KEY='organograma-editor-v1';
 
 /* ---------------- utilidades ---------------- */
@@ -339,6 +354,8 @@ function hash(s){let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.im
 const okColor=c=>/^#[0-9a-f]{6}$/i.test(c||'');
 const okPhoto=p=>typeof p==='string'&&(p.startsWith('data:image/')||p.startsWith('/')||p.startsWith('https://')||/^fs:[\w-]{1,60}$/.test(p));
 function nodeColor(n){return okColor(n.color)?n.color:(n.dept?PALETTE[hash(key(n.dept))%PALETTE.length]:'#64748b')}
+const VAGA_NOMES=['vazio','vaga','vaga em aberto','a contratar','em contratacao'];
+const isVacant=n=>VAGA_NOMES.includes(key(n&&n.name));
 function initials(name){const p=String(name||'').trim().split(/\s+/).filter(Boolean);if(!p.length)return '?';return ((p[0][0]||'')+(p.length>1?p[p.length-1][0]:'')).toUpperCase()}
 
 /* ---------------- estado ---------------- */
@@ -443,15 +460,18 @@ function cardMarkup(n,C,F,photoSrc){
   const col=nodeColor(n),isSel=C.screen&&n.id===sel,cy=H/2;
   let s=`<g class="card" data-id="${esc(n.id)}" transform="translate(${n._x} ${n._y})">`;
   if(isSel)s+=`<rect x="-5" y="-5" width="${W+10}" height="${H+10}" rx="14" style="fill:none;stroke:${C.accent};stroke-width:2.5px"/>`;
-  s+=`<rect class="cbg" width="${W}" height="${H}" rx="10" style="fill:${C.card};stroke:${C.edge};stroke-width:1px${n.kind==='assistant'?';stroke-dasharray:5 4':''}"/>`;
+  const vac=isVacant(n);
+  s+=`<rect class="cbg" width="${W}" height="${H}" rx="10" style="fill:${vac?C.vac:C.card};stroke:${C.edge};stroke-width:1px${n.kind==='assistant'?';stroke-dasharray:5 4':''}"/>`;
   s+=`<rect width="6" height="${H}" clip-path="url(#cclip)" style="fill:${col}"/>`;
   const src=photoSrc!==undefined?photoSrc:photoURL(n.photo);
   s+=`<g class="av${src?' has':''}" data-av="1"><circle cx="46" cy="${cy}" r="31" style="fill:${col}"/>`;
   if(src){s+=`<circle cx="46" cy="${cy}" r="29" style="fill:${C.card}"/><image href="${esc(src)}" xlink:href="${esc(src)}" x="17" y="${cy-29}" width="58" height="58" preserveAspectRatio="xMidYMid slice" clip-path="url(#avclip)"/>`}
+  else if(vac)s+=`<circle cx="46" cy="${cy}" r="29" style="fill:${C.vac}"/><circle cx="46" cy="${cy}" r="21" style="fill:none;stroke:${col};stroke-width:1.5px;stroke-dasharray:4 3"/><path d="M46 ${cy-8}v16M38 ${cy}h16" style="fill:none;stroke:${col};stroke-width:2.2px;stroke-linecap:round"/>`;
   else s+=`<text x="46" y="${cy+7}" text-anchor="middle" style="font:${F.ini};fill:#ffffff">${esc(initials(n.name))}</text>`;
   s+='</g>';
   const tx=88,mw=W-tx-12;
-  const name=ellip(n.name||'Sem nome',F.name,mw);
+  const name=ellip(n.name||'Sem nome',F.name,vac?mw-50:mw);
+  if(vac)s+=`<rect x="${W-56}" y="17" width="46" height="18" rx="9" style="fill:none;stroke:${C.warn};stroke-width:1px"/><text x="${W-33}" y="30" text-anchor="middle" style="font:${F.dept};letter-spacing:.06em;fill:${C.warn}">VAGA</text>`;
   const tl=wrap(n.title,F.title,mw,2);
   s+=`<text x="${tx}" y="31" style="font:${F.name};fill:${C.ink}">${esc(name)}</text>`;
   tl.forEach((t,i)=>{s+=`<text x="${tx}" y="${50+i*15.5}" style="font:${F.title};fill:${C.muted}">${esc(t)}</text>`});
@@ -825,10 +845,11 @@ function buildPanel(open){
   if(!n){pinner.innerHTML=overviewHTML();if(window.innerWidth<=760)panel.classList.remove('open');return}
   buildIndex();
   const direct=kidsOf(n.id).length,total=countDesc(n.id);
+  let teamVac=0;{const st=[n.id],seenT=new Set([n.id]);while(st.length){for(const k of kidsOf(st.pop())){if(seenT.has(k.id))continue;seenT.add(k.id);if(isVacant(k))teamVac++;st.push(k.id)}}}
   const options=[...nodes.values()].filter(m=>m.id!==n.id&&!isDesc(n.id,m.id)).sort((a,b)=>a.name.localeCompare(b.name));
   const depts=[...new Set([...nodes.values()].map(m=>m.dept).filter(Boolean))].sort();
   pinner.innerHTML=`
-  <div class="p-head"><span class="eyebrow">${n.kind==='assistant'?'Assistente':'Pessoa'}</span><button class="btn icon sheet-close" data-a="close" aria-label="Fechar">${ICON.close}</button></div>
+  <div class="p-head"><span class="eyebrow">${isVacant(n)?'Vaga em aberto':n.kind==='assistant'?'Assistente':'Pessoa'}</span><button class="btn icon sheet-close" data-a="close" aria-label="Fechar">${ICON.close}</button></div>
   <div class="photo-box">
     <div class="ph" id="ph" role="button" tabindex="0" aria-label="Trocar foto"></div>
     <div class="ph-actions">
@@ -837,6 +858,7 @@ function buildPanel(open){
       <small>Ou arraste uma imagem para a foto ou para o cartão.</small>
     </div>
   </div>
+  ${isVacant(n)?'<div class="vac-note">Esta posição conta como vaga em aberto. Quando for preenchida, troque o nome “VAZIO” pelo nome da pessoa contratada.</div>':''}
   <div class="field"><label for="f-name">Nome</label><input id="f-name" data-k="name" maxlength="120"></div>
   <div class="field"><label for="f-title">Cargo</label><input id="f-title" data-k="title" maxlength="160"></div>
   <div class="field"><label for="f-dept">Área / departamento</label><input id="f-dept" data-k="dept" list="deptList" maxlength="80"><datalist id="deptList">${depts.map(d=>`<option value="${esc(d)}">`).join('')}</datalist></div>
@@ -844,7 +866,7 @@ function buildPanel(open){
   <div class="field"><label for="f-mgr">Reporta a</label><select id="f-mgr"><option value="">— Ninguém (topo do organograma)</option>${options.map(m=>`<option value="${esc(m.id)}">${esc(m.name||'Sem nome')}${m.title?' · '+esc(m.title):''}</option>`).join('')}</select></div>
   <div class="field"><span class="fl">Posição</span><div class="seg"><button data-kind="staff">Subordinado</button><button data-kind="assistant" ${direct?'disabled title="Quem tem equipe não pode ser assistente"':''}>Assistente</button></div></div>
   <div class="field"><span class="fl">Cor do cartão</span><div class="swatches"><button class="sw auto" data-color="" aria-label="Automática pela área" title="Automática pela área"></button>${PALETTE.map(c=>`<button class="sw" data-color="${c}" style="background:${c}" aria-label="Cor ${c}"></button>`).join('')}</div></div>
-  <div class="team"><div><b>${direct}</b> direto${direct===1?'':'s'} · <b>${total}</b> no total</div>${direct?`<button class="btn" data-a="collapse">${n.collapsed?'Mostrar equipe':'Recolher equipe'}</button>`:''}</div>
+  <div class="team"><div><b>${direct}</b> direto${direct===1?'':'s'} · <b>${total}</b> no total${teamVac?` · <b style="color:var(--warn)">${teamVac}</b> vaga${teamVac===1?'':'s'}`:''}</div>${direct?`<button class="btn" data-a="collapse">${n.collapsed?'Mostrar equipe':'Recolher equipe'}</button>`:''}</div>
   <div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-a="child">+ Subordinado</button><button class="btn" data-a="sibling">+ Colega</button><button class="btn" data-a="assistant">+ Assistente</button></div>
   <div class="danger-zone">
     <button class="btn danger" data-a="del">Excluir pessoa${direct?' (equipe sobe para o gestor)':''}</button>
@@ -874,12 +896,19 @@ function overviewHTML(){
   buildIndex();const all=[...nodes.values()];
   let depth=0;const dfs=(id,d,seen)=>{depth=Math.max(depth,d);for(const k of kidsOf(id))if(!seen.has(k.id)){seen.add(k.id);dfs(k.id,d+1,seen)}};
   const seen=new Set();for(const r of kidsOf(''))dfs(r.id,1,seen);
-  const dm=new Map();for(const n of all){const d=n.dept||'Sem área';if(!dm.has(d))dm.set(d,{c:n.dept?nodeColor({dept:n.dept}):'#64748b',n:0});dm.get(d).n++}
-  const legend=[...dm.entries()].sort((a,b)=>b[1].n-a[1].n);
+  const dm=new Map();
+  for(const n of all){const k=key(n.dept)||'~';if(!dm.has(k))dm.set(k,{names:new Map(),c:n.dept?nodeColor({dept:n.dept}):'#64748b',n:0,v:0});const g=dm.get(k);g.n++;if(isVacant(n))g.v++;const lbl=n.dept||'Sem área';g.names.set(lbl,(g.names.get(lbl)||0)+1)}
+  const legend=[...dm.entries()].map(([k,g])=>({k,c:g.c,n:g.n,v:g.v,label:[...g.names.entries()].sort((a,b)=>b[1]-a[1])[0][0]})).sort((a,b)=>b.n-a.n);
+  const vacs=all.filter(isVacant),occ=all.length-vacs.length,pct=all.length?Math.round(occ/all.length*100):0;
+  const areas=legend.filter(x=>x.k!=='~').length;
   return `
   <div class="p-head"><span class="eyebrow">Visão geral</span><button class="btn icon sheet-close" data-a="close" aria-label="Fechar">${ICON.close}</button></div>
-  <div class="stats"><div class="stat"><b>${all.length}</b><span>pessoas</span></div><div class="stat"><b>${depth}</b><span>níveis</span></div><div class="stat"><b>${[...dm.keys()].filter(k=>k!=='Sem área').length}</b><span>áreas</span></div></div>
-  ${legend.length?`<div class="field"><span class="fl">Áreas</span><ul class="legend">${legend.map(([d,v])=>`<li><i style="background:${v.c}"></i><span>${esc(d)}</span><em>${v.n}</em></li>`).join('')}</ul></div>`:''}
+  <div class="stats"><div class="stat"><b>${all.length}</b><span>quadro total</span></div><div class="stat"><b>${occ}</b><span>ocupadas</span></div><div class="stat vac"><b>${vacs.length}</b><span>vagas em aberto</span></div></div>
+  ${all.length?`<div class="fill"><div class="fill-bar" role="img" aria-label="${pct}% do quadro preenchido"><i style="width:${pct}%"></i></div><small>${pct}% do quadro preenchido</small></div>`:''}
+  <div class="stats two"><div class="stat"><b>${depth}</b><span>níveis</span></div><div class="stat"><b>${areas}</b><span>áreas</span></div></div>
+  ${vacs.length?`<div class="field"><span class="fl">Vagas em aberto</span><ul class="vac-list">${vacs.sort((a,b)=>key(a.dept).localeCompare(key(b.dept))||key(a.title).localeCompare(key(b.title))).map(n=>{const mg=nodes.get(n.parentId);return `<li><button data-vac="${esc(n.id)}"><i style="background:${nodeColor(n)}"></i><span>${esc(n.title||'Cargo não informado')}<small>${esc([n.dept,mg&&!isVacant(mg)?'reporta a '+mg.name:''].filter(Boolean).join(' · '))}</small></span></button></li>`}).join('')}</ul></div>`:''}
+  ${legend.length?`<div class="field"><span class="fl">Áreas</span><ul class="legend">${legend.map(x=>`<li><i style="background:${x.c}"></i><span>${esc(x.label)}</span><em>${x.n}${x.v?` · <b>${x.v} vaga${x.v===1?'':'s'}</b>`:''}</em></li>`).join('')}</ul></div>`:''}
+  <p class="note">Cartões com o nome “VAZIO” contam como vaga em aberto.</p>
   <div class="field"><span class="fl">Como usar</span>
   <dl class="keys">
     <dt>Clique</dt><dd>seleciona o cartão para editar</dd>
@@ -900,6 +929,7 @@ pinner.addEventListener('click',e=>{
   const b=e.target.closest('button');const n=sel&&nodes.get(sel);
   if(!b){if(e.target.closest('#ph')&&n){n.photo?openPhoto(n.id):pickPhoto(n.id)}return}
   if(b.dataset.a==='close'){panel.classList.remove('open');return}
+  if(b.dataset.vac){reveal(b.dataset.vac);return}
   if(!n)return;
   if(b.dataset.kind){if(b.dataset.kind!==n.kind){n.kind=b.dataset.kind;commit()}return}
   if(b.dataset.color!=null&&b.classList.contains('sw')){n.color=b.dataset.color;commit();return}
@@ -1119,7 +1149,7 @@ async function buildExportSVG(){
 <defs><clipPath id="cclip"><rect width="${W}" height="${H}" rx="10"/></clipPath><clipPath id="avclip"><circle cx="46" cy="${H/2}" r="29"/></clipPath></defs>
 <rect width="100%" height="100%" style="fill:${C.paper}"/>
 <text x="${pad}" y="${pad+8}" style="font:bold 24px Arial, Helvetica, sans-serif;fill:${C.ink}">${esc(meta.title)}</text>
-<text x="${pad}" y="${pad+32}" style="font:13px Arial, Helvetica, sans-serif;fill:${C.muted}">${nodes.size} pessoas · atualizado em ${date}</text>
+<text x="${pad}" y="${pad+32}" style="font:13px Arial, Helvetica, sans-serif;fill:${C.muted}">${(()=>{const v=[...nodes.values()].filter(isVacant).length;return `${nodes.size} posições · ${nodes.size-v} ocupadas · ${v} vaga${v===1?'':'s'} em aberto`})()} · atualizado em ${date}</text>
 <g transform="translate(${ox} ${oy})"><path d="${wiresPath(list)}" style="fill:none;stroke:${C.wire};stroke-width:1.6px"/>${body}</g></svg>`};
 }
 async function exportPNG(){

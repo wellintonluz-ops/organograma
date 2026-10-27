@@ -90,6 +90,21 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .menu button:hover,.menu button:focus-visible{background:var(--accent-soft)}
 .menu hr{border:0;border-top:1px solid var(--rule);margin:4px 2px}
 .menu .del{color:var(--danger)}
+.btn.user{padding:3px;border-radius:50%}
+.uav{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-weight:600;font-size:12px}
+.uav img{width:100%;height:100%;object-fit:cover;display:block}
+.who{display:flex;flex-direction:column;gap:2px;padding:8px 10px 6px;min-width:0}
+.who b{font-family:var(--f-display);font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who small{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who .priv{margin-top:6px;color:var(--ok)}
+.auth{position:fixed;inset:0;z-index:200;background:var(--paper);display:grid;place-items:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background-image:radial-gradient(var(--dot) 1.3px,transparent 1.4px);background-size:24px 24px}
+.auth-card{background:var(--panel);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow);padding:30px 28px 26px;width:100%;max-width:400px;display:flex;flex-direction:column;align-items:flex-start;gap:14px}
+.auth-card .mark{width:44px;height:44px;border-radius:10px}
+.auth-card .mark svg{width:26px;height:26px}
+.auth-card h1{margin:0;font-family:var(--f-display);font-size:26px;letter-spacing:-.01em}
+.auth-card p{margin:0;color:var(--muted);line-height:1.5}
+.gbtn{width:100%;justify-content:center;padding:11px 14px;font-size:15px;margin-top:4px}
+.auth-msg{color:var(--danger)!important;background:var(--danger-soft);border-radius:8px;padding:9px 12px;font-size:13px;width:100%}
 
 /* ---------- área principal ---------- */
 .main{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:0}
@@ -256,6 +271,14 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--panel-2);border:1
       </div>
     </div>
     <span class="status" id="status" title=""><i></i><span>Conectando…</span></span>
+    <div class="menu-wrap" id="userWrap" hidden>
+      <button class="btn user" id="userBtn" aria-haspopup="true" aria-expanded="false" aria-label="Sua conta" title="Sua conta"><span class="uav" id="userAv"></span></button>
+      <div class="menu" id="userMenu" hidden role="menu">
+        <div class="who"><b id="userName"></b><small id="userEmail"></small><small class="priv">Só esta conta vê estes organogramas.</small></div>
+        <hr>
+        <button role="menuitem" id="logoutBtn"><svg class="i" viewBox="0 0 24 24"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H4"/></svg>Sair</button>
+      </div>
+    </div>
   </div>
   <nav class="tabs" id="tabs" role="tablist" aria-label="Organogramas" hidden></nav>
 </header>
@@ -302,10 +325,20 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--panel-2);border:1
 </main>
 <input type="file" id="photoFile" accept="image/*" hidden>
 <input type="file" id="jsonFile" accept=".json,application/json" hidden>
+<div class="auth" id="auth" hidden>
+  <div class="auth-card">
+    <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/></svg></div>
+    <h1>Organograma</h1>
+    <p>Entre com sua conta Google para ver e editar os seus organogramas. Cada conta tem os próprios organogramas e fotos, sem acesso aos de outras contas.</p>
+    <button class="btn primary gbtn" id="loginBtn"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>Entrar com Google</button>
+    <p class="auth-msg" id="authMsg" role="alert" hidden></p>
+  </div>
+</div>
 <div id="modalRoot"></div>
 <div id="toastRoot"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 const FIREBASE_CONFIG={
@@ -558,7 +591,7 @@ async function save(){
       await Promise.all(Array.from({length:Math.min(5,ops.length)},worker));
       if(err)throw err;
     }while(again);
-    failCount=0;setStatus('ok','Salvo','Alterações salvas e visíveis para quem tem acesso a esta página.');
+    failCount=0;setStatus('ok','Salvo',(me?'Salvo na conta '+(me.email||'Google')+'. Só esta conta tem acesso.':'Alterações salvas e visíveis para quem tem acesso a esta página.'));
   }catch(e){
     const code=e&&e.code;
     if(code==='not_granted'||code==='revoked'||code==='permission-denied'){setStatus('err','Somente leitura','Você pode ver o organograma, mas não tem permissão para salvar alterações.')}
@@ -583,7 +616,7 @@ function onPeople(snap){
     if(local&&synced.has(id)&&ser(local)!==synced.get(id))continue; // edição local pendente vence
     nodes.set(id,{id,...d});synced.set(id,js);changed=true;
   }
-  if(!ready){ready=true;hist=[];hi=-1;pushHist();render();fit();setStatus('ok','Salvo','Alterações salvas e visíveis para quem tem acesso a esta página.');return}
+  if(!ready){ready=true;hist=[];hi=-1;pushHist();render();fit();setStatus('ok','Salvo',(me?'Salvo na conta '+(me.email||'Google')+'. Só esta conta tem acesso.':'Alterações salvas e visíveis para quem tem acesso a esta página.'));return}
   if(changed){if(sel&&!nodes.has(sel)){sel=null;buildPanel()}render()}
 }
 function onMeta(s){
@@ -612,46 +645,130 @@ async function init(){
   col.onSnapshot(onPeople,e=>{if(!ready){startLocal();return}setStatus('err','Sem conexão',e&&e.message)});
 }
 
+/* ---------------- login e dados por conta ----------------
+   Cada conta Google tem a própria pasta no Firestore: users/{uid}/charts, users/{uid}/fotos.
+   As regras do Firestore garantem que ninguém lê ou grava a pasta de outra conta. */
+const OWNER_EMAIL='wellinton.luz@grupotbx.com.br'; // dono dos dados criados antes do login
+let auth=null,me=null,ub=null;
+const uc=name=>ub.collection(name);
 function initFirebase(){
-  if(!window.firebase){startLocal();setStatus('err','Firebase não carregou','Sem internet ou bloqueio de rede. Os dados estão sendo salvos só neste navegador.');return}
+  if(!window.firebase||!firebase.auth){showLogin('Não consegui conectar ao Firebase. Confira a internet e recarregue a página.');return}
   try{
     const app=firebase.apps.length?firebase.app():firebase.initializeApp(FIREBASE_CONFIG);
-    db=app.firestore();fsPhotos=true;mode='db';
-    $('#cleanBtn').hidden=false;$('#chartActs').hidden=false;$('#tabs').hidden=false;
-    let migrating=false;
-    db.collection('charts').onSnapshot(async snap=>{
-      charts=snap.docs.map(d=>{const x=d.data()||{};return{id:d.id,title:String(x.title||'Organograma'),order:Number(x.order)||0,createdAt:Number(x.createdAt)||0}})
-        .sort((a,b)=>a.order-b.order||a.createdAt-b.createdAt);
-      if(!charts.length){
-        if(migrating)return;migrating=true;
-        try{await migrateLegacy()}catch(e){failInit(e)}
-        return;
-      }
-      renderTabs();
-      if(!chartId||!charts.some(c=>c.id===chartId)){
-        let want=decodeURIComponent(location.hash.slice(1));
-        if(!charts.some(c=>c.id===want)){try{want=localStorage.getItem(LS_KEY+'-ultimo')}catch(e){want=''}}
-        openChart(charts.some(c=>c.id===want)?want:charts[0].id);
-      }
-    },failInit);
-  }catch(e){startLocal();setStatus('err','Erro no Firebase',e&&e.message)}
+    db=app.firestore();auth=app.auth();
+    auth.getRedirectResult().catch(e=>showLogin(loginErr(e)));
+    auth.onAuthStateChanged(u=>{
+      if(!u){if(me){location.replace(location.pathname);return}showLogin();return}
+      if(me&&me.uid!==u.uid){location.replace(location.pathname);return}
+      if(!me)startUser(u);
+    });
+  }catch(e){showLogin('Erro ao iniciar o Firebase: '+((e&&e.message)||''))}
 }
-function failInit(e){
-  if(!ready&&mode==='db'){$('#tabs').hidden=true;$('#chartActs').hidden=true;$('#cleanBtn').hidden=true;fsPhotos=false;startLocal();setStatus('err','Sem acesso ao Firebase',(e&&e.message)||'Confira as regras do Firestore.');toast('Não consegui ler o Firebase. Confira as regras de segurança do Firestore.');return}
-  setStatus('err','Sem conexão',e&&e.message);
+function loginErr(e){
+  const c=e&&e.code||'';
+  if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')return '';
+  if(c==='auth/unauthorized-domain')return 'Este endereço não está autorizado no Firebase. Adicione o domínio em Authentication › Configurações › Domínios autorizados.';
+  if(c==='auth/operation-not-allowed')return 'O login com Google não está ativado no Firebase (Authentication › Método de login › Google).';
+  if(c==='auth/network-request-failed')return 'Sem conexão com a internet. Tente de novo.';
+  return 'Não foi possível entrar. '+((e&&e.message)||'');
 }
-/* Primeiro acesso com abas: o organograma antigo (coleções people e meta) vira a aba "principal". */
-async function migrateLegacy(){
-  const cid='principal';
-  const [legacy,m]=await Promise.all([db.collection('people').get(),db.doc('meta/chart').get()]);
-  const md=m.exists?normMeta(m.data()):{title:'Organograma',compact:true};
-  const docs=legacy.docs;
-  for(let i=0;i<docs.length;i+=400){
-    const b=db.batch();
-    docs.slice(i,i+400).forEach(d=>b.set(db.collection('charts').doc(cid).collection('people').doc(d.id),norm(d.data())));
-    await b.commit();
+function showLogin(msg){
+  $('#auth').hidden=false;
+  const m=$('#authMsg');m.textContent=msg||'';m.hidden=!msg;
+  $('#loginBtn').disabled=false;
+}
+async function login(){
+  if(!auth){location.reload();return}
+  const btn=$('#loginBtn');btn.disabled=true;$('#authMsg').hidden=true;
+  const prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
+  try{await auth.signInWithPopup(prov)}
+  catch(e){
+    if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')){try{await auth.signInWithRedirect(prov);return}catch(e2){showLogin(loginErr(e2));return}}
+    showLogin(loginErr(e));
   }
-  await db.collection('charts').doc(cid).set({...md,order:0,createdAt:Date.now()},{merge:true});
+}
+$('#loginBtn').addEventListener('click',login);
+async function logout(){
+  closeMenus();
+  if(mode==='db'&&chartId){clearTimeout(saveTimer);try{await save()}catch(e){}}
+  try{await auth.signOut()}catch(e){}
+  location.replace(location.pathname); // recarrega a página: nada da conta anterior fica na memória
+}
+$('#logoutBtn').addEventListener('click',logout);
+function startUser(u){
+  me=u;ub=db.collection('users').doc(u.uid);
+  fsPhotos=true;mode='db';
+  $('#auth').hidden=true;
+  $('#cleanBtn').hidden=false;$('#chartActs').hidden=false;$('#tabs').hidden=false;$('#userWrap').hidden=false;
+  const av=$('#userAv');
+  if(u.photoURL){av.innerHTML='';const img=new Image();img.referrerPolicy='no-referrer';img.alt='';img.src=u.photoURL;img.onerror=()=>{av.textContent=initials(u.displayName||u.email)};av.appendChild(img)}
+  else av.textContent=initials(u.displayName||u.email);
+  $('#userName').textContent=u.displayName||'Conta Google';
+  $('#userEmail').textContent=u.email||'';
+  let preparing=false;
+  uc('charts').onSnapshot(async snap=>{
+    charts=snap.docs.map(d=>{const x=d.data()||{};return{id:d.id,title:String(x.title||'Organograma'),order:Number(x.order)||0,createdAt:Number(x.createdAt)||0}})
+      .sort((a,b)=>a.order-b.order||a.createdAt-b.createdAt);
+    if(!charts.length){
+      if(preparing)return;preparing=true;
+      try{await prepareAccount()}catch(e){failInit(e)}
+      return;
+    }
+    renderTabs();
+    if(!chartId||!charts.some(c=>c.id===chartId)){
+      let want=decodeURIComponent(location.hash.slice(1));
+      if(!charts.some(c=>c.id===want)){try{want=localStorage.getItem(lastKey())}catch(e){want=''}}
+      openChart(charts.some(c=>c.id===want)?want:charts[0].id);
+    }
+  },failInit);
+}
+const lastKey=()=>LS_KEY+'-ultimo-'+(me?me.uid:'');
+function failInit(e){
+  const c=e&&e.code;
+  if(c==='permission-denied'){setStatus('err','Sem permissão','As regras do Firestore bloquearam o acesso. Publique as regras novas no console do Firebase.');if(!ready)toast('O Firebase bloqueou o acesso aos seus dados. Confira as regras do Firestore.');return}
+  setStatus('err','Sem conexão',(e&&e.message)||'');
+}
+/* Primeira entrada de uma conta.
+   Para o dono, copia os organogramas criados antes do login (com fotos) para a pasta dele.
+   Para as outras contas, cria um organograma vazio. */
+async function prepareAccount(){
+  const isOwner=me.email&&me.email.toLowerCase()===OWNER_EMAIL&&me.emailVerified;
+  if(isOwner){try{if(await copyLegacy())return}catch(e){toast('Não consegui copiar os organogramas antigos: '+((e&&e.message)||''))}}
+  await uc('charts').doc('principal').set({title:'Meu organograma',compact:true,order:0,createdAt:Date.now()});
+}
+async function copyLegacy(){
+  let list=[];
+  const lc=await db.collection('charts').get();
+  for(const d of lc.docs){const ps=await d.ref.collection('people').get();list.push({id:d.id,meta:d.data()||{},people:ps.docs.map(p=>({id:p.id,data:p.data()||{}}))})}
+  if(!list.length){
+    const [lp,lm]=await Promise.all([db.collection('people').get(),db.doc('meta/chart').get()]);
+    if(lp.empty)return false;
+    list=[{id:'principal',meta:{...(lm.exists?normMeta(lm.data()):{title:'Organograma',compact:true}),order:0,createdAt:Date.now()},people:lp.docs.map(p=>({id:p.id,data:p.data()||{}}))}];
+  }
+  const photos=new Set();
+  for(const c of list)for(const p of c.people){const ph=p.data.photo;if(typeof ph==='string'&&ph.startsWith('fs:'))photos.add(ph.slice(3))}
+  let i=0;
+  for(const pid of photos){
+    i++;toast(`Copiando seus organogramas para a sua conta… foto ${i} de ${photos.size}`);
+    try{
+      const src=db.collection('fotos').doc(pid);const m=await src.get();if(!m.exists)continue;
+      const parts=await src.collection('partes').get();
+      const dst=uc('fotos').doc(pid);
+      for(const pt of parts.docs)await dst.collection('partes').doc(pt.id).set(pt.data()||{});
+      await dst.set(m.data()||{});
+    }catch(e){}
+  }
+  toast('Copiando seus organogramas para a sua conta…');
+  for(const c of list){
+    const ref=uc('charts').doc(c.id);
+    for(let k=0;k<c.people.length;k+=400){const b=db.batch();c.people.slice(k,k+400).forEach(p=>b.set(ref.collection('people').doc(p.id),norm(p.data)));await b.commit()}
+  }
+  for(const c of list){
+    const md=normMeta(c.meta);
+    await uc('charts').doc(c.id).set({title:md.title,compact:md.compact,order:Number(c.meta.order)||0,createdAt:Number(c.meta.createdAt)||Date.now()});
+  }
+  toast(`${list.length} organograma(s) copiado(s) para a sua conta.`);
+  return true;
 }
 let charts=[],chartId=null,unsubPeople=null,unsubMeta=null;
 async function openChart(cid){
@@ -659,13 +776,13 @@ async function openChart(cid){
   if(chartId){clearTimeout(saveTimer);try{await save()}catch(e){}}
   if(unsubPeople)unsubPeople();if(unsubMeta)unsubMeta();
   chartId=cid;
-  try{localStorage.setItem(LS_KEY+'-ultimo',cid)}catch(e){}
+  try{localStorage.setItem(lastKey(),cid)}catch(e){}
   try{history.replaceState(null,'','#'+encodeURIComponent(cid))}catch(e){}
   nodes=new Map();synced=new Map();sel=null;ready=false;hist=[];hi=-1;
   const c=charts.find(x=>x.id===cid);
   meta={title:c?c.title:'Organograma',compact:true};metaSynced=JSON.stringify(meta);
   syncTitle();renderTabs();render();buildPanel();
-  const ref=db.collection('charts').doc(cid);
+  const ref=uc('charts').doc(cid);
   metaRef=ref;col=ref.collection('people');
   unsubMeta=ref.onSnapshot(s=>{if(chartId===cid)onMeta({exists:s.exists,data:()=>s.data()})},()=>{});
   unsubPeople=col.onSnapshot(snap=>{if(chartId===cid)onPeople(snap)},failInit);
@@ -680,11 +797,11 @@ function renderTabs(){
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-newchart'))newChart();else if(b.dataset.chart)openChart(b.dataset.chart)});
 window.addEventListener('hashchange',()=>{const id=decodeURIComponent(location.hash.slice(1));if(charts.some(c=>c.id===id))openChart(id)});
 async function newChart(data){
-  if(mode!=='db'){toast('Vários organogramas só funcionam com o Firebase conectado.');return}
+  if(mode!=='db'||!ub){toast('Entre com sua conta Google para criar organogramas.');return}
   const cid=uid(),order=charts.reduce((m,c)=>Math.max(m,c.order),0)+1,title=data?data.title:'Novo organograma';
   try{
-    if(data&&data.people.length){for(let i=0;i<data.people.length;i+=400){const b=db.batch();data.people.slice(i,i+400).forEach(p=>b.set(db.collection('charts').doc(cid).collection('people').doc(p.id),norm(p)));await b.commit()}}
-    await db.collection('charts').doc(cid).set({title,compact:data?data.compact:true,order,createdAt:Date.now()});
+    if(data&&data.people.length){for(let i=0;i<data.people.length;i+=400){const b=db.batch();data.people.slice(i,i+400).forEach(p=>b.set(uc('charts').doc(cid).collection('people').doc(p.id),norm(p)));await b.commit()}}
+    await uc('charts').doc(cid).set({title,compact:data?data.compact:true,order,createdAt:Date.now()});
     if(!charts.some(c=>c.id===cid))charts.push({id:cid,title,order,createdAt:Date.now()});
     await openChart(cid);
     if(!data)setTimeout(()=>{const t=$('#chartTitle');t.focus();t.select()},60);
@@ -697,10 +814,10 @@ function duplicateChart(){
 function confirmDeleteChart(){
   if(mode!=='db')return;
   if(charts.length<=1){toast('Este é o único organograma. Para esvaziá-lo, use Arquivo › Apagar organograma.');return}
-  const bg=modal(`<h3>Excluir “${esc(meta.title)}”?</h3><p>A aba e as ${nodes.size} pessoas deste organograma serão apagadas para todos. Os outros organogramas não são afetados. Essa ação não pode ser desfeita.</p><div class="actions"><button class="btn" data-x>Cancelar</button><button class="btn danger armed" data-ok>Excluir organograma</button></div>`);
+  const bg=modal(`<h3>Excluir “${esc(meta.title)}”?</h3><p>A aba e as ${nodes.size} pessoas deste organograma serão apagadas. Os outros organogramas não são afetados. Essa ação não pode ser desfeita.</p><div class="actions"><button class="btn" data-x>Cancelar</button><button class="btn danger armed" data-ok>Excluir organograma</button></div>`);
   bg.querySelector('[data-x]').onclick=closeModal;
   bg.querySelector('[data-ok]').onclick=async()=>{
-    closeModal();const cid=chartId,ref=db.collection('charts').doc(cid);
+    closeModal();const cid=chartId,ref=uc('charts').doc(cid);
     const next=charts.find(c=>c.id!==cid);
     try{
       clearTimeout(saveTimer);
@@ -757,7 +874,7 @@ function loadFsPhoto(pid){
   if(photoProm.has(pid))return photoProm.get(pid);
   const pr=(async()=>{
     if(!db||!fsPhotos)throw new Error('sem banco');
-    const ref=db.collection('fotos').doc(pid);
+    const ref=uc('fotos').doc(pid);
     const m=await ref.get();if(!m.exists)throw new Error('foto não encontrada');
     const md=m.data()||{};
     const parts=await ref.collection('partes').get();
@@ -774,7 +891,7 @@ async function uploadFsPhoto(blob,showProgress){
   const pid=uid();
   const b64=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]||'');fr.onerror=rej;fr.readAsDataURL(blob)});
   const n=Math.max(1,Math.ceil(b64.length/CHUNK));
-  const ref=db.collection('fotos').doc(pid);
+  const ref=uc('fotos').doc(pid);
   for(let i=0;i<n;i++){
     if(showProgress)toast(`Enviando foto… ${Math.round(i/n*100)}%`);
     await ref.collection('partes').doc(String(i).padStart(4,'0')).set({d:b64.slice(i*CHUNK,(i+1)*CHUNK)});
@@ -795,10 +912,10 @@ async function cleanPhotos(){
   const addFrom=arr=>arr.forEach(n=>{if(n.photo&&n.photo.startsWith('fs:'))used.add(n.photo.slice(3))});
   addFrom([...nodes.values()]);for(const h of hist){try{addFrom(JSON.parse(h).people||[])}catch(e){}}
   try{
-    const lists=await Promise.all([db.collection('people').get(),...charts.filter(c=>c.id!==chartId).map(c=>db.collection('charts').doc(c.id).collection('people').get())]);
+    const lists=await Promise.all(charts.filter(c=>c.id!==chartId).map(c=>uc('charts').doc(c.id).collection('people').get()));
     for(const l of lists)addFrom(l.docs.map(d=>d.data()||{}));
   }catch(e){toast('Não consegui conferir as fotos dos outros organogramas.');return}
-  let snap;try{snap=await db.collection('fotos').get()}catch(e){toast('Não consegui listar as fotos.');return}
+  let snap;try{snap=await uc('fotos').get()}catch(e){toast('Não consegui listar as fotos.');return}
   const orphan=snap.docs.filter(d=>!used.has(d.id));
   const mb=orphan.reduce((a,d)=>a+((d.data()||{}).size||0),0)/1048576;
   const total=snap.docs.reduce((a,d)=>a+((d.data()||{}).size||0),0)/1048576;
@@ -919,7 +1036,7 @@ function overviewHTML(){
     <dt><kbd>Del</kbd></dt><dd>exclui a pessoa (equipe sobe)</dd>
     <dt><kbd>Ctrl</kbd> <kbd>Z</kbd></dt><dd>desfaz</dd>
   </dl></div>
-  <p class="note">${mode==='db'?'As alterações são salvas automaticamente e aparecem para todos que abrirem esta página.':'As alterações ficam salvas neste navegador. Exporte um backup em Arquivo para levar a outro computador.'}</p>`;
+  <p class="note">${mode==='db'?(me?'As alterações são salvas automaticamente na sua conta. Só você vê estes organogramas.':'As alterações são salvas automaticamente e aparecem para todos que abrirem esta página.'):'As alterações ficam salvas neste navegador. Exporte um backup em Arquivo para levar a outro computador.'}</p>`;
 }
 pinner.addEventListener('input',e=>{const el=e.target,n=sel&&nodes.get(sel);if(!n||!el.dataset.k)return;n[el.dataset.k]=el.value;touch();if(el.dataset.k==='name'||el.dataset.k==='dept')fillPanel(false)});
 pinner.addEventListener('change',e=>{const el=e.target;if(el.dataset.k){pushHist();updateUndo();return}
@@ -1043,8 +1160,9 @@ q.addEventListener('keydown',e=>{if(e.key==='Enter'){const b=res.querySelector('
 document.addEventListener('click',e=>{if(!e.target.closest('.search'))res.hidden=true;if(!e.target.closest('.menu-wrap'))closeMenus()});
 
 /* ---------------- menu arquivo ---------------- */
-function closeMenus(){$('#fileMenu').hidden=true;$('#fileBtn').setAttribute('aria-expanded','false')}
-$('#fileBtn').onclick=()=>{const m=$('#fileMenu');m.hidden=!m.hidden;$('#fileBtn').setAttribute('aria-expanded',String(!m.hidden));if(!m.hidden)m.querySelector('button').focus()};
+function closeMenus(){$('#fileMenu').hidden=true;$('#fileBtn').setAttribute('aria-expanded','false');$('#userMenu').hidden=true;$('#userBtn').setAttribute('aria-expanded','false')}
+$('#userBtn').onclick=()=>{const m=$('#userMenu'),open=m.hidden;closeMenus();m.hidden=!open;$('#userBtn').setAttribute('aria-expanded',String(open))};
+$('#fileBtn').onclick=()=>{const m=$('#fileMenu'),open=m.hidden;closeMenus();m.hidden=!open;$('#fileBtn').setAttribute('aria-expanded',String(!m.hidden));if(!m.hidden)m.querySelector('button').focus()};
 $('#fileMenu').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;closeMenus();
   ({png:exportPNG,'json-out':exportJSON,csv:openCsv,'json-in':()=>$('#jsonFile').click(),clear:confirmClear,clean:cleanPhotos,new:()=>newChart(),dup:duplicateChart,delchart:confirmDeleteChart})[b.dataset.act]()});
 $('#startBtn').onclick=startChart;$('#startCsv').onclick=openCsv;

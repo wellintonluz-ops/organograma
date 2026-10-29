@@ -90,6 +90,25 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .menu button:hover,.menu button:focus-visible{background:var(--accent-soft)}
 .menu hr{border:0;border-top:1px solid var(--rule);margin:4px 2px}
 .menu .del{color:var(--danger)}
+body.view .edit-only{display:none!important}
+body.view #userWrap{display:none!important}
+body.view #chartTitle{cursor:default}
+body.view #chartTitle:hover{border-color:transparent}
+.viewbar{flex:1 1 100%;order:10;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted);padding-top:2px}
+.viewbar svg{width:16px;height:16px;color:var(--accent)}
+.viewbar b{color:var(--ink);font-weight:600}
+.viewbar span:not(:empty)::before{content:"·";margin-right:8px}
+.tab .sh{width:14px;height:14px;color:var(--accent)}
+.ro-name{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ro-name b{font-family:var(--f-display);font-size:18px;line-height:1.2}
+.ro-name span{color:var(--muted);line-height:1.35}
+.ro-dept{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.ro-dept i{width:8px;height:8px;border-radius:50%}
+.ro{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;margin:0;font-size:13.5px;line-height:1.4}
+.ro dt{color:var(--muted);font-weight:600;font-size:12px;padding-top:1px}
+.ro dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.lnk{border:0;background:none;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-align:left}
+.lnk:hover{text-decoration:underline}
 .btn.user{padding:3px;border-radius:50%}
 .uav{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-weight:600;font-size:12px}
 .uav img{width:100%;height:100%;object-fit:cover;display:block}
@@ -247,27 +266,29 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--panel-2);border:1
     <div class="results" id="results" hidden></div>
   </div>
   <div class="tools">
-    <button class="btn icon" id="undo" title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><svg class="i" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
-    <button class="btn icon" id="redo" title="Refazer (Ctrl+Y)" aria-label="Refazer"><svg class="i" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
-    <span class="sep"></span>
+    <button class="btn icon edit-only" id="undo" title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><svg class="i" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+    <button class="btn icon edit-only" id="redo" title="Refazer (Ctrl+Y)" aria-label="Refazer"><svg class="i" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+    <span class="sep edit-only"></span>
     <button class="btn toggle" id="compact" aria-pressed="true" title="Empilha equipes sem subordinados em coluna, como no SmartDraw"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M12 7v13M12 11h2M12 16h2M12 13.5h-2M12 18.5h-2"/><rect x="14" y="9.5" width="7" height="3" rx="1"/><rect x="3" y="12" width="7" height="3" rx="1"/><rect x="14" y="14.5" width="7" height="3" rx="1"/><rect x="3" y="17" width="7" height="3" rx="1"/></svg><span class="lbl">Compacto</span></button>
     <div class="menu-wrap">
       <button class="btn" id="fileBtn" aria-haspopup="true" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></svg><span class="lbl">Arquivo</span></button>
       <div class="menu" id="fileMenu" hidden role="menu">
         <div id="chartActs" hidden style="display:contents">
+        <button role="menuitem" data-act="share"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Copiar link de visualização</button>
+        <hr>
         <button role="menuitem" data-act="new"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo organograma</button>
         <button role="menuitem" data-act="dup"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>Duplicar este organograma</button>
         <button role="menuitem" class="del" data-act="delchart"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Excluir este organograma</button>
         <hr>
         </div>
         <button role="menuitem" data-act="png"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/></svg>Exportar imagem (PNG)</button>
-        <button role="menuitem" data-act="json-out"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>Exportar backup (JSON)</button>
-        <hr>
-        <button role="menuitem" data-act="csv"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></svg>Importar planilha (Excel/CSV)</button>
-        <button role="menuitem" data-act="json-in"><svg class="i" viewBox="0 0 24 24"><path d="M12 20V8M7 13l5-5 5 5M5 4h14"/></svg>Importar backup (JSON)</button>
-        <hr>
-        <button role="menuitem" data-act="clean" id="cleanBtn" hidden><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8M15 4l6 6"/></svg>Limpar fotos sem uso</button>
-        <button role="menuitem" class="del" data-act="clear"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Apagar organograma</button>
+        <button role="menuitem" class="edit-only" data-act="json-out"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>Exportar backup (JSON)</button>
+        <hr class="edit-only">
+        <button role="menuitem" class="edit-only" data-act="csv"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></svg>Importar planilha (Excel/CSV)</button>
+        <button role="menuitem" class="edit-only" data-act="json-in"><svg class="i" viewBox="0 0 24 24"><path d="M12 20V8M7 13l5-5 5 5M5 4h14"/></svg>Importar backup (JSON)</button>
+        <hr class="edit-only">
+        <button role="menuitem" class="edit-only" data-act="clean" id="cleanBtn" hidden><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8M15 4l6 6"/></svg>Limpar fotos sem uso</button>
+        <button role="menuitem" class="del edit-only" data-act="clear"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Apagar organograma</button>
       </div>
     </div>
     <span class="status" id="status" title=""><i></i><span>Conectando…</span></span>
@@ -281,6 +302,7 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--panel-2);border:1
     </div>
   </div>
   <nav class="tabs" id="tabs" role="tablist" aria-label="Organogramas" hidden></nav>
+  <div class="viewbar" id="viewBar" hidden><svg class="i" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><b>Somente visualização</b><span id="viewBy"></span></div>
 </header>
 
 <main class="main">
@@ -314,7 +336,7 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--panel-2);border:1
         <div class="eyebrow">Organograma vazio</div>
         <h2>Comece pela pessoa do topo</h2>
         <p>Adicione o diretor ou gestor principal e vá criando a equipe abaixo. Se já tem a lista em Excel, importe com as colunas Nome, Cargo, Área e Gestor.</p>
-        <div class="row">
+        <div class="row edit-only">
           <button class="btn primary" id="startBtn"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Adicionar primeira pessoa</button>
           <button class="btn" id="startCsv">Importar planilha</button>
         </div>
@@ -328,8 +350,8 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--panel-2);border:1
 <div class="auth" id="auth" hidden>
   <div class="auth-card">
     <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/></svg></div>
-    <h1>Organograma</h1>
-    <p>Entre com sua conta Google para ver e editar os seus organogramas. Cada conta tem os próprios organogramas e fotos, sem acesso aos de outras contas.</p>
+    <h1 id="authTitle">Organograma</h1>
+    <p id="authText">Entre com sua conta Google para ver e editar os seus organogramas. Cada conta tem os próprios organogramas e fotos, sem acesso aos de outras contas.</p>
     <button class="btn primary gbtn" id="loginBtn"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>Entrar com Google</button>
     <p class="auth-msg" id="authMsg" role="alert" hidden></p>
   </div>
@@ -535,7 +557,7 @@ function applyView(){
 }
 function positionFloat(){
   const f=$('#float');const n=sel&&nodes.get(sel);
-  if(!n||n._x==null||!visibleNodes().includes(n)||act&&act.moved){f.hidden=true;return}
+  if(viewOnly||!n||n._x==null||!visibleNodes().includes(n)||act&&act.moved){f.hidden=true;return}
   f.hidden=false;
   const r=stage.getBoundingClientRect();
   let cx=(n._x+W/2)*view.k+view.x,top=n._y*view.k+view.y-f.offsetHeight-12;
@@ -616,7 +638,7 @@ function onPeople(snap){
     if(local&&synced.has(id)&&ser(local)!==synced.get(id))continue; // edição local pendente vence
     nodes.set(id,{id,...d});synced.set(id,js);changed=true;
   }
-  if(!ready){ready=true;hist=[];hi=-1;pushHist();render();fit();setStatus('ok','Salvo',(me?'Salvo na conta '+(me.email||'Google')+'. Só esta conta tem acesso.':'Alterações salvas e visíveis para quem tem acesso a esta página.'));return}
+  if(!ready){ready=true;hist=[];hi=-1;pushHist();render();fit();if(viewOnly){setStatus('ok','Somente visualização','Você pode navegar e ver os detalhes, mas não pode alterar este organograma.');return}setStatus('ok','Salvo',(me?'Salvo na conta '+(me.email||'Google')+'. Só esta conta tem acesso.':'Alterações salvas e visíveis para quem tem acesso a esta página.'));return}
   if(changed){if(sel&&!nodes.has(sel)){sel=null;buildPanel()}render()}
 }
 function onMeta(s){
@@ -656,6 +678,7 @@ function initFirebase(){
   try{
     const app=firebase.apps.length?firebase.app():firebase.initializeApp(FIREBASE_CONFIG);
     db=app.firestore();auth=app.auth();
+    if(shareParams){startViewer(app);return}
     auth.getRedirectResult().catch(e=>showLogin(loginErr(e)));
     auth.onAuthStateChanged(u=>{
       if(!u){if(me){location.replace(location.pathname);return}showLogin();return}
@@ -707,7 +730,7 @@ function startUser(u){
   $('#userEmail').textContent=u.email||'';
   let preparing=false;
   uc('charts').onSnapshot(async snap=>{
-    charts=snap.docs.map(d=>{const x=d.data()||{};return{id:d.id,title:String(x.title||'Organograma'),order:Number(x.order)||0,createdAt:Number(x.createdAt)||0}})
+    charts=snap.docs.map(d=>{const x=d.data()||{};return{id:d.id,title:String(x.title||'Organograma'),order:Number(x.order)||0,createdAt:Number(x.createdAt)||0,shared:!!x.shared}})
       .sort((a,b)=>a.order-b.order||a.createdAt-b.createdAt);
     if(!charts.length){
       if(preparing)return;preparing=true;
@@ -790,7 +813,7 @@ async function openChart(cid){
 function renderTabs(){
   const t=$('#tabs');if(t.hidden)return;
   t.innerHTML=charts.map(c=>{const title=c.id===chartId?(meta.title||c.title):c.title;
-    return `<button class="tab" role="tab" data-chart="${esc(c.id)}" aria-selected="${c.id===chartId}" title="${esc(title)}"><span>${esc(title)}</span></button>`}).join('')
+    return `<button class="tab" role="tab" data-chart="${esc(c.id)}" aria-selected="${c.id===chartId}" title="${esc(title)}${c.shared?' (link de visualização ativo)':''}"><span>${esc(title)}</span>${c.shared?'<svg class="i sh" viewBox="0 0 24 24" aria-label="compartilhado"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>':''}</button>`}).join('')
     +`<button class="tab add" data-newchart title="Criar outro organograma"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo</button>`;
   t.querySelector('[aria-selected="true"]')?.scrollIntoView({block:'nearest',inline:'nearest'});
 }
@@ -832,6 +855,81 @@ function confirmDeleteChart(){
   };
 }
 
+/* ---------------- link de visualização ----------------
+   O dono marca o organograma como compartilhado (shared:true no documento do organograma).
+   O link ?ver=<conta>&org=<organograma> abre sem login e só para leitura:
+   as regras do Firestore liberam apenas a leitura desse organograma e das fotos marcadas com pub:true. */
+let viewOnly=false;
+const shareParams=(()=>{try{const q=new URLSearchParams(location.search);const u=q.get('ver'),c=q.get('org');return u&&c&&/^[\w-]{1,128}$/.test(u)&&/^[\w-]{1,128}$/.test(c)?{u,c}:null}catch(e){return null}})();
+const shareLink=cid=>`${location.origin}${location.pathname}?ver=${encodeURIComponent(me.uid)}&org=${encodeURIComponent(cid)}`;
+function startViewer(app){
+  viewOnly=true;mode='view';fsPhotos=true;
+  document.body.classList.add('view');
+  const t=$('#chartTitle');t.readOnly=true;t.tabIndex=-1;
+  $('#viewBar').hidden=false;
+  $('#empty h2').textContent='Este organograma ainda está vazio';
+  $('#empty p').textContent='Quando o responsável adicionar pessoas, elas aparecem aqui automaticamente.';
+  setStatus('ok','Somente visualização','Você pode navegar e ver os detalhes, mas não pode alterar este organograma.');
+  ub=db.collection('users').doc(shareParams.u);
+  const ref=uc('charts').doc(shareParams.c);
+  chartId=shareParams.c;metaRef=ref;col=ref.collection('people');
+  let gone=false;
+  const unavailable=()=>{if(gone)return;gone=true;showUnavailable()};
+  ref.onSnapshot(s=>{
+    if(!s.exists||!(s.data()||{}).shared){unavailable();return}
+    const d=s.data()||{};
+    $('#viewBy').textContent=d.sharedBy?`Compartilhado por ${d.sharedBy}`:'Organograma compartilhado';
+    onMeta({exists:true,data:()=>d});
+    document.title=(d.title||'Organograma')+' · Organograma';
+  },unavailable);
+  col.onSnapshot(onPeople,unavailable);
+}
+function showUnavailable(){
+  $('#auth').hidden=false;
+  $('#authTitle').textContent='Link indisponível';
+  $('#authText').textContent='Este link de visualização foi desativado pelo responsável ou não existe. Peça um link novo para quem compartilhou o organograma.';
+  $('#loginBtn').hidden=true;$('#authMsg').hidden=true;
+}
+function openShare(){
+  if(mode!=='db'||!me||!chartId){toast('Entre com sua conta Google para compartilhar.');return}
+  const c=charts.find(x=>x.id===chartId);const on=!!(c&&c.shared);const link=shareLink(chartId);
+  const bg=modal(`<h3>Link de visualização</h3>
+    <p>Quem abrir o link vê o organograma “${esc(meta.title)}” com fotos, sem precisar de conta e <b>sem poder editar</b>. O que você alterar aqui aparece para quem estiver com o link aberto. Os seus outros organogramas continuam privados.</p>
+    ${on?`<div class="field"><label for="shareUrl">Link</label><input id="shareUrl" readonly></div>
+      <div class="actions"><button class="btn danger" data-off>Desativar link</button><button class="btn" data-x>Fechar</button><button class="btn primary" data-copy>Copiar link</button></div>`
+    :`<div class="actions"><button class="btn" data-x>Cancelar</button><button class="btn primary" data-on>Criar link e copiar</button></div>`}`);
+  bg.querySelector('[data-x]').onclick=closeModal;
+  const inp=bg.querySelector('#shareUrl');if(inp){inp.value=link;inp.addEventListener('focus',()=>inp.select())}
+  bg.querySelector('[data-copy]')?.addEventListener('click',()=>copyText(link,inp));
+  bg.querySelector('[data-on]')?.addEventListener('click',async e=>{
+    e.target.disabled=true;copyText(link,null,true);
+    try{await setShared(chartId,true);closeModal();openShare();toast('Link criado e copiado. Cole onde quiser compartilhar.')}
+    catch(err){e.target.disabled=false;toast('Não consegui criar o link. Confira as regras do Firestore.')}
+  });
+  bg.querySelector('[data-off]')?.addEventListener('click',async e=>{
+    e.target.disabled=true;
+    try{await setShared(chartId,false);closeModal();toast('Link desativado. Quem tinha o link não consegue mais abrir.')}
+    catch(err){e.target.disabled=false;toast('Não consegui desativar o link. Tente de novo.')}
+  });
+}
+function copyText(txt,inp,silent){
+  const fallback=()=>{if(inp){inp.focus();inp.select()}if(!silent)toast('Selecionei o link. Use Ctrl+C para copiar.')};
+  try{navigator.clipboard.writeText(txt).then(()=>{if(!silent)toast('Link copiado.')},fallback)}catch(e){fallback()}
+}
+async function setShared(cid,on){
+  const ref=uc('charts').doc(cid);
+  if(on){
+    // marca as fotos deste organograma como públicas para leitura, para aparecerem no link
+    const pids=[...nodes.values()].map(n=>n.photo).filter(p=>typeof p==='string'&&p.startsWith('fs:')).map(p=>p.slice(3));
+    for(const pid of new Set(pids)){try{await uc('fotos').doc(pid).set({pub:true},{merge:true})}catch(e){}}
+    await ref.set({shared:true,sharedBy:me.displayName||me.email||'',sharedAt:Date.now()},{merge:true});
+  }else{
+    await ref.set({shared:false},{merge:true});
+  }
+  const c=charts.find(x=>x.id===cid);if(c)c.shared=on;renderTabs();
+}
+const chartIsShared=()=>{const c=charts.find(x=>x.id===chartId);return !!(c&&c.shared)};
+
 /* ---------------- ações ---------------- */
 function maxOrd(pid){const k=kidsOf(pid);return k.length?Math.max(...k.map(c=>c.ord)):0}
 function isDesc(ancestor,id){let cur=nodes.get(id),g=0;while(cur&&cur.parentId&&g++<5000){if(cur.parentId===ancestor)return true;cur=nodes.get(cur.parentId)}return false}
@@ -851,7 +949,7 @@ function removePerson(id,withTeam){
   sel=n.parentId&&nodes.has(n.parentId)?n.parentId:null;commit();buildPanel();
   toast(count>1?`${count} pessoas excluídas.`:`${n.name||'Pessoa'} excluído(a) do organograma.`,'Desfazer',undo);
 }
-function toggleCollapse(id){const n=nodes.get(id);if(!n)return;n.collapsed=!n.collapsed;commit()}
+function toggleCollapse(id){const n=nodes.get(id);if(!n)return;n.collapsed=!n.collapsed;if(viewOnly)synced.set(id,ser(n));commit()}
 function select(id){sel=id;render();buildPanel(true);
   if(id&&window.innerWidth<=760){const n=nodes.get(id);if(n&&n._x!=null){const{w,h}=stageSize();view.k=Math.max(view.k,.6);view.x=w/2-(n._x+W/2)*view.k;view.y=h*.22-(n._y+H/2)*view.k;applyView()}}}
 function reveal(id){let n=nodes.get(id),g=0;while(n&&n.parentId&&g++<5000){const p=nodes.get(n.parentId);if(p&&p.collapsed){p.collapsed=false}n=p}touch();sel=id;render();buildPanel(true);centerOn(id)}
@@ -896,7 +994,7 @@ async function uploadFsPhoto(blob,showProgress){
     if(showProgress)toast(`Enviando foto… ${Math.round(i/n*100)}%`);
     await ref.collection('partes').doc(String(i).padStart(4,'0')).set({d:b64.slice(i*CHUNK,(i+1)*CHUNK)});
   }
-  await ref.set({type:blob.type||'image/jpeg',name:String(blob.name||'').slice(0,120),size:blob.size,parts:n,createdAt:Date.now()});
+  await ref.set({...(typeof chartIsShared==='function'&&chartIsShared()?{pub:true}:{}),type:blob.type||'image/jpeg',name:String(blob.name||'').slice(0,120),size:blob.size,parts:n,createdAt:Date.now()});
   const url=URL.createObjectURL(blob);photoCache.set(pid,url);photoProm.set(pid,Promise.resolve(url));
   return 'fs:'+pid;
 }
@@ -951,15 +1049,34 @@ async function setPhoto(id,file){
   }catch(e){toast('Não consegui ler essa imagem. Tente outro arquivo.')}
 }
 $('#photoFile').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f&&photoTarget)setPhoto(photoTarget,f)});
-function pickPhoto(id){photoTarget=id;$('#photoFile').click()}
+function pickPhoto(id){if(viewOnly)return;photoTarget=id;$('#photoFile').click()}
 
 /* ---------------- painel ---------------- */
 const pinner=$('#pinner'),panel=$('#panel');
 let panelFor=undefined;
 const ICON={close:'<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>'};
+function buildViewPanel(n){
+  buildIndex();
+  const direct=kidsOf(n.id).length,total=countDesc(n.id),vac=isVacant(n),mg=nodes.get(n.parentId);
+  let teamVac=0;{const st=[n.id],seenT=new Set([n.id]);while(st.length){for(const k of kidsOf(st.pop())){if(seenT.has(k.id))continue;seenT.add(k.id);if(isVacant(k))teamVac++;st.push(k.id)}}}
+  pinner.innerHTML=`
+  <div class="p-head"><span class="eyebrow">${vac?'Vaga em aberto':n.kind==='assistant'?'Assistente':'Pessoa'}</span><button class="btn icon sheet-close" data-a="close" aria-label="Fechar">${ICON.close}</button></div>
+  <div class="photo-box"><div class="ph" id="ph" role="button" tabindex="0" aria-label="Ampliar foto"></div>
+    <div class="ro-name"><b>${esc(n.name||'Sem nome')}</b>${n.title?`<span>${esc(n.title)}</span>`:''}${n.dept?`<span class="ro-dept"><i style="background:${nodeColor(n)}"></i>${esc(n.dept)}</span>`:''}</div></div>
+  ${vac?'<div class="vac-note">Esta posição ainda não foi preenchida.</div>':''}
+  <dl class="ro">
+    ${n.email?`<dt>E-mail</dt><dd>${esc(n.email)}</dd>`:''}
+    ${n.phone?`<dt>Telefone</dt><dd>${esc(n.phone)}</dd>`:''}
+    <dt>Reporta a</dt><dd>${mg?`<button class="lnk" data-go="${esc(mg.id)}">${esc(mg.name||'Sem nome')}</button>${mg.title?` · ${esc(mg.title)}`:''}`:'Ninguém (topo do organograma)'}</dd>
+    <dt>Equipe</dt><dd>${direct} direto${direct===1?'':'s'} · ${total} no total${teamVac?` · <b style="color:var(--warn)">${teamVac} vaga${teamVac===1?'':'s'}</b>`:''}</dd>
+  </dl>
+  ${direct?`<div><button class="btn" data-a="collapse">${n.collapsed?'Mostrar equipe':'Recolher equipe'}</button></div>`:''}`;
+  fillPanel(true);
+}
 function buildPanel(open){
   const n=sel&&nodes.get(sel);panelFor=n?n.id:null;
   if(!n){pinner.innerHTML=overviewHTML();if(window.innerWidth<=760)panel.classList.remove('open');return}
+  if(viewOnly){buildViewPanel(n);if(open&&window.innerWidth<=760)panel.classList.add('open');return}
   buildIndex();
   const direct=kidsOf(n.id).length,total=countDesc(n.id);
   let teamVac=0;{const st=[n.id],seenT=new Set([n.id]);while(st.length){for(const k of kidsOf(st.pop())){if(seenT.has(k.id))continue;seenT.add(k.id);if(isVacant(k))teamVac++;st.push(k.id)}}}
@@ -998,7 +1115,7 @@ function fillPanel(force){
   for(const el of pinner.querySelectorAll('[data-k]')){if(force||document.activeElement!==el)el.value=n[el.dataset.k]||''}
   const mg=$('#f-mgr');if(mg&&(force||document.activeElement!==mg))mg.value=n.parentId&&nodes.has(n.parentId)?n.parentId:'';
   const ph=$('#ph');if(ph){const c=nodeColor(n);ph.style.setProperty('--c',c);
-    ph.classList.toggle('has',!!n.photo);ph.setAttribute('aria-label',n.photo?'Ampliar foto':'Enviar foto');ph.title=n.photo?'Clique para ampliar':'Clique para enviar uma foto';
+    ph.classList.toggle('has',!!n.photo);ph.setAttribute('aria-label',n.photo?'Ampliar foto':'Enviar foto');ph.title=n.photo?'Clique para ampliar':(viewOnly?'':'Clique para enviar uma foto');
     const pu=photoURL(n.photo);if(pu){ph.style.backgroundImage=`url("${pu.replace(/"/g,'%22')}")`;ph.textContent='';ph.style.backgroundColor='var(--panel-2)'}
     else{ph.style.backgroundImage='';ph.textContent=initials(n.name);ph.style.backgroundColor=c}}
   pinner.querySelectorAll('[data-kind]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.kind===n.kind)));
@@ -1007,7 +1124,7 @@ function fillPanel(force){
 }
 function refreshPanel(){
   if((sel||null)!==panelFor){buildPanel();return}
-  if(sel)fillPanel(false);else if(!panel.contains(document.activeElement))pinner.innerHTML=overviewHTML();
+  if(sel){if(viewOnly)buildPanel();else fillPanel(false)}else if(!panel.contains(document.activeElement))pinner.innerHTML=overviewHTML();
 }
 function overviewHTML(){
   buildIndex();const all=[...nodes.values()];
@@ -1027,7 +1144,11 @@ function overviewHTML(){
   ${legend.length?`<div class="field"><span class="fl">Áreas</span><ul class="legend">${legend.map(x=>`<li><i style="background:${x.c}"></i><span>${esc(x.label)}</span><em>${x.n}${x.v?` · <b>${x.v} vaga${x.v===1?'':'s'}</b>`:''}</em></li>`).join('')}</ul></div>`:''}
   <p class="note">Cartões com o nome “VAZIO” contam como vaga em aberto.</p>
   <div class="field"><span class="fl">Como usar</span>
-  <dl class="keys">
+  <dl class="keys">${viewOnly?`
+    <dt>Clique</dt><dd>mostra os detalhes da pessoa</dd>
+    <dt>Clique na foto</dt><dd>amplia a foto</dd>
+    <dt>Arrastar</dt><dd>move o organograma</dd>
+    <dt><kbd>Ctrl</kbd> + roda</dt><dd>zoom</dd>`:`
     <dt>Clique</dt><dd>seleciona o cartão para editar</dd>
     <dt>Arrastar cartão</dt><dd>solte sobre outra pessoa para mudar o gestor</dd>
     <dt>Arrastar foto</dt><dd>solte uma imagem sobre um cartão</dd>
@@ -1035,8 +1156,9 @@ function overviewHTML(){
     <dt><kbd>Enter</kbd></dt><dd>adiciona colega no mesmo nível</dd>
     <dt><kbd>Del</kbd></dt><dd>exclui a pessoa (equipe sobe)</dd>
     <dt><kbd>Ctrl</kbd> <kbd>Z</kbd></dt><dd>desfaz</dd>
+`}
   </dl></div>
-  <p class="note">${mode==='db'?(me?'As alterações são salvas automaticamente na sua conta. Só você vê estes organogramas.':'As alterações são salvas automaticamente e aparecem para todos que abrirem esta página.'):'As alterações ficam salvas neste navegador. Exporte um backup em Arquivo para levar a outro computador.'}</p>`;
+  <p class="note">${viewOnly?'Visualização somente leitura. O organograma se atualiza sozinho quando o responsável faz alterações.':mode==='db'?(me?'As alterações são salvas automaticamente na sua conta. Só você vê estes organogramas.':'As alterações são salvas automaticamente e aparecem para todos que abrirem esta página.'):'As alterações ficam salvas neste navegador. Exporte um backup em Arquivo para levar a outro computador.'}</p>`;
 }
 pinner.addEventListener('input',e=>{const el=e.target,n=sel&&nodes.get(sel);if(!n||!el.dataset.k)return;n[el.dataset.k]=el.value;touch();if(el.dataset.k==='name'||el.dataset.k==='dept')fillPanel(false)});
 pinner.addEventListener('change',e=>{const el=e.target;if(el.dataset.k){pushHist();updateUndo();return}
@@ -1046,6 +1168,7 @@ pinner.addEventListener('click',e=>{
   const b=e.target.closest('button');const n=sel&&nodes.get(sel);
   if(!b){if(e.target.closest('#ph')&&n){n.photo?openPhoto(n.id):pickPhoto(n.id)}return}
   if(b.dataset.a==='close'){panel.classList.remove('open');return}
+  if(b.dataset.go){sel=b.dataset.go;reveal(b.dataset.go);return}
   if(b.dataset.vac){reveal(b.dataset.vac);return}
   if(!n)return;
   if(b.dataset.kind){if(b.dataset.kind!==n.kind){n.kind=b.dataset.kind;commit()}return}
@@ -1079,7 +1202,7 @@ svg.addEventListener('pointerdown',e=>{
   const tg=e.target.closest('[data-toggle]');
   if(tg){act={type:'toggle',id:tg.dataset.toggle,sx:e.clientX,sy:e.clientY,moved:false};return}
   const c=e.target.closest('[data-id]');
-  act=c?{type:'card',id:c.dataset.id,av:!!e.target.closest('[data-av]'),sx:e.clientX,sy:e.clientY,moved:false,drop:null}:{type:'pan',sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y,moved:false};
+  act=c?{type:'card',vx:view.x,vy:view.y,id:c.dataset.id,av:!!e.target.closest('[data-av]'),sx:e.clientX,sy:e.clientY,moved:false,drop:null}:{type:'pan',sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y,moved:false};
 });
 svg.addEventListener('pointermove',e=>{
   if(!pts.has(e.pointerId)||!act)return;
@@ -1088,7 +1211,7 @@ svg.addEventListener('pointermove',e=>{
   const dx=e.clientX-act.sx,dy=e.clientY-act.sy;
   if(!act.moved&&Math.hypot(dx,dy)<5)return;
   if(!act.moved){act.moved=true;$('#float').hidden=true}
-  if(act.type==='pan'){svg.classList.add('panning');view.x=act.vx+dx;view.y=act.vy+dy;applyView()}
+  if(act.type==='pan'||(viewOnly&&act.type==='card')){svg.classList.add('panning');view.x=act.vx+dx;view.y=act.vy+dy;applyView()}
   else if(act.type==='card'){
     const n=nodes.get(act.id);const el=cardsG.querySelector(`[data-id="${CSS.escape(act.id)}"]`);if(!n||!el)return;
     if(!el.classList.contains('dragging')){el.classList.add('dragging');cardsG.appendChild(el)}
@@ -1120,9 +1243,9 @@ svg.addEventListener('wheel',e=>{e.preventDefault();
   if(e.ctrlKey||e.metaKey){const r=svg.getBoundingClientRect();zoomAt(Math.exp(-clamp(d,-120,120)*.0035),e.clientX-r.left,e.clientY-r.top)}
   else{view.x-=e.shiftKey?d:(e.deltaMode===1?e.deltaX*16:e.deltaX);if(!e.shiftKey)view.y-=d;applyView()}
 },{passive:false});
-svg.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();const c=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-id]');cardsG.querySelectorAll('.drop').forEach(x=>x!==c&&x.classList.remove('drop'));c&&c.classList.add('drop')}});
+svg.addEventListener('dragover',e=>{if(viewOnly)return;if([...e.dataTransfer.types].includes('Files')){e.preventDefault();const c=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-id]');cardsG.querySelectorAll('.drop').forEach(x=>x!==c&&x.classList.remove('drop'));c&&c.classList.add('drop')}});
 svg.addEventListener('dragleave',()=>cardsG.querySelectorAll('.drop').forEach(x=>x.classList.remove('drop')));
-svg.addEventListener('drop',e=>{e.preventDefault();cardsG.querySelectorAll('.drop').forEach(x=>x.classList.remove('drop'));
+svg.addEventListener('drop',e=>{e.preventDefault();if(viewOnly)return;cardsG.querySelectorAll('.drop').forEach(x=>x.classList.remove('drop'));
   const c=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-id]');const f=e.dataTransfer.files[0];
   if(c&&f){sel=c.dataset.id;setPhoto(c.dataset.id,f)}else if(f)toast('Solte a foto em cima do cartão da pessoa.')});
 $('#float').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!sel)return;
@@ -1131,6 +1254,7 @@ $('#zin').onclick=()=>zoomAt(1.2);$('#zout').onclick=()=>zoomAt(1/1.2);$('#zfit'
 new ResizeObserver(()=>positionFloat()).observe(stage);
 
 document.addEventListener('keydown',e=>{
+  if(viewOnly&&e.key!=='Escape')return;
   const t=e.target,typing=t.matches&&t.matches('input,textarea,select,[contenteditable]');
   const mod=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();
   if(mod&&!typing&&k==='z'){e.preventDefault();e.shiftKey?redo():undo();return}
@@ -1164,7 +1288,7 @@ function closeMenus(){$('#fileMenu').hidden=true;$('#fileBtn').setAttribute('ari
 $('#userBtn').onclick=()=>{const m=$('#userMenu'),open=m.hidden;closeMenus();m.hidden=!open;$('#userBtn').setAttribute('aria-expanded',String(open))};
 $('#fileBtn').onclick=()=>{const m=$('#fileMenu'),open=m.hidden;closeMenus();m.hidden=!open;$('#fileBtn').setAttribute('aria-expanded',String(!m.hidden));if(!m.hidden)m.querySelector('button').focus()};
 $('#fileMenu').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;closeMenus();
-  ({png:exportPNG,'json-out':exportJSON,csv:openCsv,'json-in':()=>$('#jsonFile').click(),clear:confirmClear,clean:cleanPhotos,new:()=>newChart(),dup:duplicateChart,delchart:confirmDeleteChart})[b.dataset.act]()});
+  ({png:exportPNG,'json-out':exportJSON,csv:openCsv,'json-in':()=>$('#jsonFile').click(),clear:confirmClear,clean:cleanPhotos,new:()=>newChart(),share:openShare,dup:duplicateChart,delchart:confirmDeleteChart})[b.dataset.act]()});
 $('#startBtn').onclick=startChart;$('#startCsv').onclick=openCsv;
 function startChart(){const id=newPerson('',{name:'Nome do diretor',title:'Diretor(a) geral',dept:'Diretoria'});sel=id;commit();fit();buildPanel(true);focusName()}
 
@@ -1177,9 +1301,9 @@ async function openPhoto(id){
   const sub=[n.title,n.dept].filter(Boolean).join(' · ');
   const bg=modal(`<div class="lb-frame" id="lbFrame">${url?'':'<div class="loading"><span class="spin"></span>Carregando foto…</div>'}</div>
     <div class="lb-foot"><div class="lb-cap"><b>${esc(n.name||'Sem nome')}</b>${sub?`<span>${esc(sub)}</span>`:''}</div>
-    <div class="actions"><button class="btn" data-ch>Trocar foto</button><button class="btn primary" data-x>Fechar</button></div></div>`,'lb');
+    <div class="actions">${viewOnly?'':'<button class="btn" data-ch>Trocar foto</button>'}<button class="btn primary" data-x>Fechar</button></div></div>`,'lb');
   bg.querySelector('[data-x]').onclick=closeModal;
-  bg.querySelector('[data-ch]').onclick=()=>{closeModal();pickPhoto(id)};
+  const chb=bg.querySelector('[data-ch]');if(chb)chb.onclick=()=>{closeModal();pickPhoto(id)};
   const show=u=>{const fr=bg.querySelector('#lbFrame');if(!fr)return;const img=new Image();img.alt='Foto de '+(n.name||'colaborador');img.src=u;fr.innerHTML='';fr.appendChild(img)};
   if(url){show(url);return}
   if(n.photo.startsWith('fs:')){try{url=await loadFsPhoto(n.photo.slice(3));if(url)show(url);else throw 0}

@@ -443,6 +443,23 @@ let hideMoney=false;try{hideMoney=localStorage.getItem('organograma-ocultar-sala
 const BRL=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const money=v=>hideMoney?'R$ ••••••':BRL.format(v||0);
 const fmtNum=v=>Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+/* Salário por cargo: o valor preenchido numa pessoa vale para as outras do mesmo cargo que ainda não têm salário */
+const cargoKey=t=>key(t).replace(/\s+/g,' ');
+function cargoSalary(ck,exceptId){
+  const cnt=new Map();
+  for(const n of nodes.values()){if(n.id===exceptId||!ck||cargoKey(n.title)!==ck||!sal.has(n.id))continue;const v=sal.get(n.id);cnt.set(v,(cnt.get(v)||0)+1)}
+  let best=null,bc=0;for(const[v,c]of cnt)if(c>bc){best=v;bc=c}return best;
+}
+function fillBlanksByCargo(dry){
+  let count=0;const cache=new Map();
+  for(const p of nodes.values()){
+    if(sal.has(p.id))continue;const ck=cargoKey(p.title);if(!ck)continue;
+    if(!cache.has(ck))cache.set(ck,cargoSalary(ck,null));
+    const v=cache.get(ck);if(v!=null){if(!dry)sal.set(p.id,v);count++}
+  }
+  return count;
+}
+let salEditStart=null;
 function parseMoney(t){t=String(t??'').replace(/[R$\s\u00a0]/g,'');if(!t)return null;
   if(t.includes(','))t=t.replace(/\./g,'').replace(',','.');else if(/^\d{1,3}(\.\d{3})+$/.test(t))t=t.replace(/\./g,'');
   const v=Number(t);return Number.isFinite(v)&&v>=0&&v<1e9?Math.round(v*100)/100:NaN}
@@ -1175,7 +1192,7 @@ function buildPanel(open){
   <div class="field"><label for="f-title">Cargo</label><input id="f-title" data-k="title" maxlength="160"></div>
   <div class="field"><label for="f-dept">Área / departamento</label><input id="f-dept" data-k="dept" list="deptList" maxlength="80"><datalist id="deptList">${depts.map(d=>`<option value="${esc(d)}">`).join('')}</datalist></div>
   <div class="grid2"><div class="field"><label for="f-email">E-mail</label><input id="f-email" data-k="email" type="email" maxlength="160"></div><div class="field"><label for="f-phone">Telefone / ramal</label><input id="f-phone" data-k="phone" maxlength="60"></div></div>
-  <div class="field"><label for="f-sal">${isVacant(n)?'Salário previsto da vaga':'Salário mensal'} (R$)</label>${hideMoney?'<div class="money-hidden">Valores ocultos · <button class="lnk" data-a="showmoney">Mostrar</button></div>':'<input id="f-sal" inputmode="decimal" autocomplete="off" placeholder="0,00">'}<small class="sal-note">Visível só para você. Não aparece no link de visualização nem na imagem exportada.</small></div>
+  <div class="field"><label for="f-sal">${isVacant(n)?'Salário previsto da vaga':'Salário mensal'} (R$)</label>${hideMoney?'<div class="money-hidden">Valores ocultos · <button class="lnk" data-a="showmoney">Mostrar</button></div>':'<input id="f-sal" inputmode="decimal" autocomplete="off" placeholder="0,00">'}<small class="sal-note">Vale também para as outras posições com o mesmo cargo que estão sem salário. Visível só para você: não aparece no link de visualização nem na imagem exportada.</small></div>
   <div class="field"><label for="f-mgr">Reporta a</label><select id="f-mgr"><option value="">— Ninguém (topo do organograma)</option>${options.map(m=>`<option value="${esc(m.id)}">${esc(m.name||'Sem nome')}${m.title?' · '+esc(m.title):''}</option>`).join('')}</select></div>
   <div class="field"><span class="fl">Posição</span><div class="seg"><button data-kind="staff">Subordinado</button><button data-kind="assistant" ${direct?'disabled title="Quem tem equipe não pode ser assistente"':''}>Assistente</button></div></div>
   <div class="field"><span class="fl">Cor do cartão</span><div class="swatches"><button class="sw auto" data-color="" aria-label="Automática pela área" title="Automática pela área"></button>${PALETTE.map(c=>`<button class="sw" data-color="${c}" style="background:${c}" aria-label="Cor ${c}"></button>`).join('')}</div></div>
@@ -1211,13 +1228,14 @@ function moneyHTML(all,vacs,legend){
   const sum=a=>a.reduce((t,n)=>t+(sal.get(n.id)||0),0);
   const occN=all.filter(n=>!isVacant(n));
   const sOcc=sum(occN),sVac=sum(vacs),nOccSal=occN.filter(n=>sal.has(n.id)).length,missing=all.filter(n=>!sal.has(n.id)).length;
-  const any=all.some(n=>sal.has(n.id));
+  const any=all.some(n=>sal.has(n.id)),fillable=fillBlanksByCargo(true);
   const areas=legend.filter(x=>x.s>0).sort((a,b)=>b.s-a.s);
   return `<div class="field money"><div class="money-head"><span class="fl">Folha salarial mensal</span><button class="lnk" data-a="togglemoney">${hideMoney?'Mostrar valores':'Ocultar valores'}</button></div>
   ${any?`<div class="money-total"><b>${money(sOcc)}</b><span>${nOccSal} pessoa${nOccSal===1?'':'s'} ocupada${nOccSal===1?'':'s'}${nOccSal?` · média ${money(sOcc/nOccSal)}`:''}</span></div>
   <dl class="money-rows"><dt>Vagas em aberto (previsto)</dt><dd class="v">${money(sVac)}</dd><dt>Total com as vagas</dt><dd><b>${money(sOcc+sVac)}</b></dd></dl>
   ${areas.length>1?`<ul class="legend">${areas.map(x=>`<li><i style="background:${x.c}"></i><span>${esc(x.label)}</span><em>${money(x.s)}</em></li>`).join('')}</ul>`:''}
-  ${missing?`<small>${missing} posiç${missing===1?'ão':'ões'} sem salário informado.</small>`:''}`
+  ${missing?`<small>${missing} posiç${missing===1?'ão':'ões'} sem salário informado.</small>`:''}
+  ${fillable?`<button class="btn" data-a="fillcargo">Preencher ${fillable} pelo cargo</button>`:''}`
   :'<small>Preencha o salário no painel de cada pessoa para ver a folha total aqui. Só você vê esses valores.</small>'}
   </div>`;
 }
@@ -1259,14 +1277,32 @@ function overviewHTML(){
 pinner.addEventListener('input',e=>{const el=e.target,n=sel&&nodes.get(sel);
   if(n&&el.id==='f-sal'){const v=parseMoney(el.value);el.classList.toggle('bad',Number.isNaN(v));if(Number.isNaN(v))return;if(v===null)sal.delete(n.id);else sal.set(n.id,v);touch();return}
   if(!n||!el.dataset.k)return;n[el.dataset.k]=el.value;touch();if(el.dataset.k==='name'||el.dataset.k==='dept')fillPanel(false)});
-pinner.addEventListener('change',e=>{const el=e.target;if(el.dataset.k){pushHist();updateUndo();return}
-  if(el.id==='f-sal'){pushHist();updateUndo();const v=sel&&sal.get(sel);el.value=v!=null?fmtNum(v):'';el.classList.remove('bad');return}
+pinner.addEventListener('focusin',e=>{if(e.target.id==='f-sal'&&sel)salEditStart={id:sel,v:sal.get(sel)}});
+pinner.addEventListener('change',e=>{const el=e.target;
+  if(el.dataset.k==='title'&&sel){const n=nodes.get(sel);
+    if(n&&!sal.has(n.id)){const v=cargoSalary(cargoKey(n.title),n.id);if(v!=null){sal.set(n.id,v);touch();fillPanel(true);toast(`Salário de ${money(v)} preenchido pelo cargo “${n.title.trim()}”.`)}}}
+  if(el.dataset.k){pushHist();updateUndo();return}
+  if(el.id==='f-sal'){
+    const n=sel&&nodes.get(sel),v=n&&sal.get(n.id),ck=n&&cargoKey(n.title);
+    if(n&&v!=null&&ck){
+      const before=salEditStart&&salEditStart.id===n.id?salEditStart.v:undefined;
+      const changed=[];
+      for(const o of nodes.values()){if(o.id===n.id||cargoKey(o.title)!==ck)continue;
+        if(!sal.has(o.id)||(before!==undefined&&sal.get(o.id)===before&&sal.get(o.id)!==v)){changed.push([o.id,sal.has(o.id)?sal.get(o.id):undefined]);sal.set(o.id,v)}}
+      const k=changed.length;
+      if(k){touch();toast(`${money(v)} aplicado também a ${k} ${k===1?'posição':'posições'} com o cargo “${n.title.trim()}”.`,'Só para esta pessoa',()=>{
+        for(const[id,pv]of changed){if(!nodes.has(id))continue;if(pv===undefined)sal.delete(id);else sal.set(id,pv)}
+        commit();toast('Salário mantido só nesta pessoa. As outras posições do cargo voltaram ao valor anterior.')})}
+    }
+    salEditStart=sel?{id:sel,v:sal.get(sel)}:null;
+    pushHist();updateUndo();const cv=sel&&sal.get(sel);el.value=cv!=null?fmtNum(cv):'';el.classList.remove('bad');return}
   if(el.id==='f-mgr'){if(!reparent(sel,el.value)){toast('Não é possível: essa pessoa faz parte da equipe dela.');fillPanel(true)}else{ensureVisible(sel)}}});
 pinner.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input'))e.target.blur()});
 pinner.addEventListener('click',e=>{
   const b=e.target.closest('button');const n=sel&&nodes.get(sel);
   if(!b){if(e.target.closest('#ph')&&n){n.photo?openPhoto(n.id):pickPhoto(n.id)}return}
   if(b.dataset.a==='close'){panel.classList.remove('open');return}
+  if(b.dataset.a==='fillcargo'){const k=fillBlanksByCargo();if(k){commit();toast(`${k} ${k===1?'posição preenchida':'posições preenchidas'} com o salário do mesmo cargo.`,'Desfazer',undo)}return}
   if(b.dataset.a==='togglemoney'||b.dataset.a==='showmoney'){hideMoney=b.dataset.a==='showmoney'?false:!hideMoney;try{localStorage.setItem('organograma-ocultar-salarios',hideMoney?'1':'0')}catch(e){}buildPanel();return}
   if(b.dataset.go){sel=b.dataset.go;reveal(b.dataset.go);return}
   if(b.dataset.vac){reveal(b.dataset.vac);return}
@@ -1448,6 +1484,7 @@ function importRows(rows,replace){
     byName.set(key(name),id);made.push([id,idx.mgr!=null?r[idx.mgr]:'']);
   });
   for(const[id,m]of made){const pid=m?byName.get(key(m)):null;if(pid&&pid!==id&&!isDesc(id,pid))nodes.get(id).parentId=pid}
+  fillBlanksByCargo();
   return made.length;
 }
 function openCsv(){

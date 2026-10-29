@@ -85,6 +85,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .tab[aria-selected="true"]::after{content:"";position:absolute;left:10px;right:10px;top:-1px;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
 .tab.add{color:var(--accent);font-weight:600}
 .tab.add svg{width:16px;height:16px}
+.tab-edit{flex:none;width:220px;max-width:60vw;border:1px solid var(--accent);border-bottom:0;border-radius:8px 8px 0 0;background:var(--paper);padding:7px 12px 8px;font-weight:600;color:var(--ink);outline:none;box-shadow:inset 0 -2px 0 var(--accent)}
 .menu{position:absolute;right:0;top:calc(100% + 6px);min-width:250px;background:var(--panel);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);padding:6px;z-index:40;display:flex;flex-direction:column}
 .menu button{display:flex;align-items:center;gap:10px;border:0;background:none;text-align:left;padding:9px 10px;border-radius:6px;cursor:pointer}
 .menu button:hover,.menu button:focus-visible{background:var(--accent-soft)}
@@ -277,6 +278,7 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--panel-2);border:1
         <button role="menuitem" data-act="share"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Copiar link de visualização</button>
         <hr>
         <button role="menuitem" data-act="new"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo organograma</button>
+        <button role="menuitem" data-act="rename"><svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/></svg>Renomear este organograma</button>
         <button role="menuitem" data-act="dup"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>Duplicar este organograma</button>
         <button role="menuitem" class="del" data-act="delchart"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Excluir este organograma</button>
         <hr>
@@ -811,13 +813,45 @@ async function openChart(cid){
   unsubPeople=col.onSnapshot(snap=>{if(chartId===cid)onPeople(snap)},failInit);
 }
 function renderTabs(){
-  const t=$('#tabs');if(t.hidden)return;
+  const t=$('#tabs');if(t.hidden||editingTab)return;
   t.innerHTML=charts.map(c=>{const title=c.id===chartId?(meta.title||c.title):c.title;
-    return `<button class="tab" role="tab" data-chart="${esc(c.id)}" aria-selected="${c.id===chartId}" title="${esc(title)}${c.shared?' (link de visualização ativo)':''}"><span>${esc(title)}</span>${c.shared?'<svg class="i sh" viewBox="0 0 24 24" aria-label="compartilhado"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>':''}</button>`}).join('')
+    return `<button class="tab" role="tab" data-chart="${esc(c.id)}" aria-selected="${c.id===chartId}" title="${esc(title)}${c.shared?' (link de visualização ativo)':''} · clique duas vezes para renomear"><span>${esc(title)}</span>${c.shared?'<svg class="i sh" viewBox="0 0 24 24" aria-label="compartilhado"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>':''}</button>`}).join('')
     +`<button class="tab add" data-newchart title="Criar outro organograma"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo</button>`;
   t.querySelector('[aria-selected="true"]')?.scrollIntoView({block:'nearest',inline:'nearest'});
 }
-$('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-newchart'))newChart();else if(b.dataset.chart)openChart(b.dataset.chart)});
+let lastTabClick={id:null,t:0};
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.hasAttribute('data-newchart')){newChart();return}
+  const id=b.dataset.chart;if(!id)return;
+  const now=Date.now();
+  if(lastTabClick.id===id&&now-lastTabClick.t<450){lastTabClick={id:null,t:0};renameTab(id);return}
+  lastTabClick={id,t:now};openChart(id);
+});
+/* Renomear a aba direto nela (dois cliques) ou por Arquivo › Renomear */
+let editingTab=null;
+function renameTab(cid){
+  if(viewOnly||mode!=='db'||!cid||editingTab)return;
+  const btn=$('#tabs').querySelector(`[data-chart="${CSS.escape(cid)}"]`);const c=charts.find(x=>x.id===cid);
+  if(!btn||!c)return;
+  const cur=cid===chartId?(meta.title||c.title):c.title;
+  editingTab=cid;
+  const inp=document.createElement('input');inp.className='tab-edit';inp.id='tabEdit';inp.value=cur;inp.maxLength=80;inp.setAttribute('aria-label','Nome do organograma');
+  btn.replaceWith(inp);inp.focus();inp.select();
+  let done=false;
+  const finish=async ok=>{
+    if(done)return;done=true;editingTab=null;
+    const v=inp.value.replace(/\s+/g,' ').trim();
+    if(ok&&v&&v!==cur){
+      c.title=v;
+      if(cid===chartId){meta.title=v;syncTitle();pushHist();updateUndo();scheduleSave()}
+      else{try{await uc('charts').doc(cid).set({title:v},{merge:true})}catch(e){toast('Não consegui renomear. Tente de novo.')}}
+    }
+    renderTabs();
+  };
+  inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();finish(true)}else if(e.key==='Escape'){e.preventDefault();finish(false)}});
+  inp.addEventListener('blur',()=>finish(true));
+  inp.addEventListener('click',e=>e.stopPropagation());
+}
 window.addEventListener('hashchange',()=>{const id=decodeURIComponent(location.hash.slice(1));if(charts.some(c=>c.id===id))openChart(id)});
 async function newChart(data){
   if(mode!=='db'||!ub){toast('Entre com sua conta Google para criar organogramas.');return}
@@ -1288,7 +1322,7 @@ function closeMenus(){$('#fileMenu').hidden=true;$('#fileBtn').setAttribute('ari
 $('#userBtn').onclick=()=>{const m=$('#userMenu'),open=m.hidden;closeMenus();m.hidden=!open;$('#userBtn').setAttribute('aria-expanded',String(open))};
 $('#fileBtn').onclick=()=>{const m=$('#fileMenu'),open=m.hidden;closeMenus();m.hidden=!open;$('#fileBtn').setAttribute('aria-expanded',String(!m.hidden));if(!m.hidden)m.querySelector('button').focus()};
 $('#fileMenu').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;closeMenus();
-  ({png:exportPNG,'json-out':exportJSON,csv:openCsv,'json-in':()=>$('#jsonFile').click(),clear:confirmClear,clean:cleanPhotos,new:()=>newChart(),share:openShare,dup:duplicateChart,delchart:confirmDeleteChart})[b.dataset.act]()});
+  ({png:exportPNG,'json-out':exportJSON,csv:openCsv,'json-in':()=>$('#jsonFile').click(),clear:confirmClear,clean:cleanPhotos,new:()=>newChart(),share:openShare,rename:()=>renameTab(chartId),dup:duplicateChart,delchart:confirmDeleteChart})[b.dataset.act]()});
 $('#startBtn').onclick=startChart;$('#startCsv').onclick=openCsv;
 function startChart(){const id=newPerson('',{name:'Nome do diretor',title:'Diretor(a) geral',dept:'Diretoria'});sel=id;commit();fit();buildPanel(true);focusName()}
 
